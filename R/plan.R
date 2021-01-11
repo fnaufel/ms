@@ -2,6 +2,8 @@ the_plan <- drake_plan(
 
   df = ler_resultados(file_in('Dados/resultados.html')),
   
+  df_summary = sumario(df),
+  
   resumo = target(
     command = {
       rmarkdown::render(knitr_in("doc/resumo.Rmd"))

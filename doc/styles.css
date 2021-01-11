@@ -33,7 +33,7 @@ main a {
   background: #f8f8f8 5px center/3em no-repeat; 
 }
 
-.rmdbox > *:last-child {
+.rmdbox > *:last-child, .rmdnote > *:last-child, .rmdcaution > *:last-child, .rmdimportant > *:last-child, .rmdtip > *:last-child, .rmdwarning > *:last-child {
   margin-bottom: 0;
 }
 
@@ -45,28 +45,35 @@ main a {
 }
 
 .rmdcaution, .rmdimportant, .rmdnote, .rmdtip, .rmdwarning {
+  margin: 1rem calc(-2px - 0.5em);
+  border: 2px solid #ccc;
   padding: 1em 1em 1em 6em;
   background: #f8f8f8 25px center/3em no-repeat; 
 }
 
 .rmdcaution {
   background-image: url("images/caution.png");
+  border-color: #dc3545;
 }
 
 .rmdimportant {
   background-image: url("images/important.png");
+  border-color: #28a745;
 }
 
 .rmdnote {
   background-image: url("images/note.png");
+  border-color: #637238;
 }
 
 .rmdtip {
   background-image: url("images/tip.png");
+  border-color: #17a2b8;
 }
 
 .rmdwarning {
   background-image: url("images/warning.png");
+  border-color: #ffc107;
 }
 
 /* Section headers */

@@ -1,6 +1,6 @@
 ---
-title: 'Megasena'
-subtitle: 'Sumário dos resultados'
+title: 'Sumário dos resultados'
+subtitle: 'Megasena'
 author: 'fnaufel'
 email: 'https://fnaufel.github.io/'
 date: 'Versão de `r format(Sys.Date(), "%d/%m/%Y")`'
@@ -164,10 +164,11 @@ $(
 library(drake)
 library(DT)
 loadd(df)
+loadd(df_summary)
 ```
 
 ```{r echo=FALSE}
-df %>% dfSummary() %>% print(method = 'render')
+df_summary %>% print(method = 'render')
 ```
 
 ```{r echo=FALSE}

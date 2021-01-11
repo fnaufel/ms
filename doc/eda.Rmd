@@ -1,6 +1,6 @@
 ---
-title: 'Megasena'
-subtitle: 'Análise Exploratória'
+title: 'Análise Exploratória'
+subtitle: 'Megasena'
 author: 'fnaufel'
 email: 'https://fnaufel.github.io/'
 date: 'Versão de `r format(Sys.Date(), "%d/%m/%Y")`'
@@ -162,8 +162,8 @@ $(
 
 ```{r echo=FALSE, message=FALSE}
 library(drake)
-library(DT)
 loadd(df)
+loadd(df_summary)
 ```
 
 
@@ -213,12 +213,138 @@ loadd(df)
 # Estatísticas
 
 ```{r echo=FALSE}
-df %>% dfSummary() %>% print(method = 'render')
+df_summary%>% print(method = 'render')
+```
+
+# Dezenas sorteadas
+
+::: {.rmdwarning}
+
+Cada sorteio é independente, e a Lei dos Grandes Números só diz respeito ao comportamento dos resultados quando o número de sorteios *tende ao infinito*. Até agora, houve $`r df %>% nrow() %>% fm()`$ sorteios, uma quantidade infinitamente menor do que infinitos sorteios. 😜
+
+As informações desta seção são apenas curiosidades. 
+
+:::
+
+## Frequência
+
+```{r}
+dezenas <- tibble(
+  dezena = c(
+    df %>% pull(d1),
+    df %>% pull(d2),
+    df %>% pull(d3),
+    df %>% pull(d4),
+    df %>% pull(d5),
+    df %>% pull(d6)
+  )
+)
+```
+
+Alguma dezena deixou de sair? Não.
+
+```{r}
+n_distinct(dezenas$dezena)
+```
+
+```{r}
+nsorteios <- nrow(df)
+media <- nsorteios / 10
+
+dezenas %>% 
+  ggplot(aes(dezena)) + 
+    geom_histogram(binwidth = 1, fill = 'light gray', color = 'black') +
+    geom_hline(aes(yintercept = media), color = 'red') +
+    labs(
+      y = NULL,
+      title = 'Frequência de cada dezena',
+      subtitle = 'média teórica em vermelho'
+    ) +
+    scale_x_continuous(breaks = c(1, c(seq(0, 60, 5))[-1]))
+```
+
+## Experimento: jogando as dezenas que menos saíram
+
+Vamos montar um *data frame* com as frequências acumuladas de cada dezena até cada concurso:
+
+```{r}
+tabular <- function(resultado) {
+  
+  vetor <- rep(0, 60)
+  vetor[resultado] <- 1
+  
+  list(vetor)
+  
+}
+```
+
+```{r}
+df %>% 
+  select(num, d1, d2, d3, d4, d5, d6) %>% 
+  rowwise() %>% 
+  transmute(
+    num = num,
+    resultado = list(c_across(d1:d6))
+  ) %>% 
+  transmute(
+    num = num,
+    freqs = tabular(resultado)
+  ) %>% 
+  ungroup() %>%
+  tibble::view()
 ```
 
 
-# Consistência
+# Arrecadação é soma de (rateios $\times$ ganhadores)?
+
+```{r}
+df %>% 
+  filter(arrec > 0) %>% 
+  mutate(
+    pago_sena = g_sena * r_sena,
+    pago_quina = g_quina * r_quina,
+    pago_quadra = g_quadra * r_quadra,
+    diferenca = arrec - pago_quadra - pago_quina - pago_sena
+  ) %>% 
+  summarize(sum(diferenca == 0))
+```
+
+Não.
+
+Como explicado [no site da CEF](http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena), a quantidade de prêmios que cada ganhador recebe depende da quantidade de números que ele apostou. Os dados não incluem esta informação.
 
 
+# Comportamento da arrecadação
 
+# Número de ganhadores de acordo com arrecadação
+
+## Em geral
+
+## Sem prêmio acumulado
+
+## Com prêmio acumulado
+
+# Quanto um ganhador da sena recebe?
+
+## Em geral
+
+## Sem prêmio acumulado
+
+## Com prêmio acumulado
+
+# Quanto um ganhador da quina recebe?
+
+## Em geral
+
+## Sem prêmio acumulado
+
+## Com prêmio acumulado
+
+# Quanto um ganhador da quadra recebe?
+
+## Em geral
+
+## Sem prêmio acumulado
+
+## Com prêmio acumulado
 
