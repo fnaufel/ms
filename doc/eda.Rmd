@@ -271,6 +271,8 @@ Vamos montar um *data frame* com as frequências acumuladas de cada dezena até 
 tabular <- function(resultado) {
   
   vetor <- rep(0, 60)
+  names(vetor) <- paste0('d', 1:60)
+  
   vetor[resultado] <- 1
   
   list(vetor)
@@ -279,7 +281,7 @@ tabular <- function(resultado) {
 ```
 
 ```{r}
-df %>% 
+df_freqs_ac <- df %>% 
   select(num, d1, d2, d3, d4, d5, d6) %>% 
   rowwise() %>% 
   transmute(
@@ -291,8 +293,37 @@ df %>%
     freqs = tabular(resultado)
   ) %>% 
   ungroup() %>%
-  tibble::view()
+  unnest_wider(freqs) %>% 
+  transmute(
+    num = num,
+    across(d1:d60, cumsum)
+  ) %>% 
+  nest(freqs = d1:d60) %>% 
+  mutate(
+    freqs = map(
+      .$freqs, 
+      pivot_longer, 
+      cols = d1:d60, 
+      names_to = 'dezena',
+      names_prefix = 'd',
+      values_to = 'fac'
+    )
+  )
+
+head(df_freqs_ac, 10)
 ```
+
+```{r}
+n_historia <- 500
+
+df_freqs_ac %>% 
+  slice_tail(n = n_historia) %>% 
+  rowwise() %>% 
+  mutate(
+    raras = list(slice_min(freqs, order_by = fac, n = 6))
+  )
+```
+
 
 
 # Arrecadação é soma de (rateios $\times$ ganhadores)?
