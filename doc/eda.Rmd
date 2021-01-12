@@ -257,8 +257,12 @@ dezenas %>%
     geom_hline(aes(yintercept = media), color = 'red') +
     labs(
       y = NULL,
-      title = 'Frequência de cada dezena',
-      subtitle = 'média teórica em vermelho'
+      title = paste0(
+        'Frequência de cada dezena após ',
+        nsorteios,
+        ' sorteios'
+      ),
+      subtitle = 'frequência teórica (uniforme) em vermelho'
     ) +
     scale_x_continuous(breaks = c(1, c(seq(0, 60, 5))[-1]))
 ```
@@ -283,27 +287,39 @@ tabular <- function(resultado) {
 ```{r}
 df_freqs_ac <- df %>% 
   select(num, d1, d2, d3, d4, d5, d6) %>% 
+  
+  # criar coluna com vetor das 6 dezenas sorteadas por concurso
   rowwise() %>% 
   transmute(
     num = num,
     resultado = list(c_across(d1:d6))
   ) %>% 
+  
+  # criar coluna freqs com vetor de 60 posições por concurso 
+  # (0 = dezena não saiu, 1 = saiu)
   transmute(
     num = num,
     freqs = tabular(resultado)
   ) %>% 
+  
+  # transformar freqs em 60 colunas
   ungroup() %>%
-  unnest_wider(freqs) %>% 
+  unnest_wider(freqs) %>%
+  
+  # transformar cada coluna em frequências acumuladas
   transmute(
     num = num,
     across(d1:d60, cumsum)
-  ) %>% 
-  nest(freqs = d1:d60) %>% 
+  ) %>%
+  
+  # Cada concurso tem uma tibble associada, com 60 linhas: linha n tem a dezena n
+  # e a frequência acumulada (fac) daquela dezena até o concurso n
+  nest(freqs = d1:d60) %>%
   mutate(
     freqs = map(
-      .$freqs, 
-      pivot_longer, 
-      cols = d1:d60, 
+      .$freqs,
+      pivot_longer,
+      cols = d1:d60,
       names_to = 'dezena',
       names_prefix = 'd',
       values_to = 'fac'
@@ -314,15 +330,109 @@ head(df_freqs_ac, 10)
 ```
 
 ```{r}
-n_historia <- 500
-
 df_freqs_ac %>% 
-  slice_tail(n = n_historia) %>% 
+  slice(500) %>% 
+  pull(freqs)
+```
+
+
+```{r}
+n_historia <- 100
+n_raras <- 8
+
+tibble2vec <- function(x) {
+  
+  pull(x, dezena)[1:n_raras]
+  
+}
+
+df_raras <- df_freqs_ac %>% 
+  
+  # Acrescentar uma coluna com uma tibble com as dezenas mais raras (com menores fac) 
+  # até aquele concurso
+  slice_tail(n = nrow(.) - n_historia) %>% 
   rowwise() %>% 
   mutate(
-    raras = list(slice_min(freqs, order_by = fac, n = 6))
+    raras = list(
+      slice_min(freqs, order_by = fac, n = n_raras) %>% 
+        select(dezena) %>% 
+        mutate(dezena = as.numeric(dezena)) %>% 
+        arrange(dezena)
+    ),
+    .keep = 'unused'
+  ) %>% 
+  ungroup() %>% 
+  
+  # Transformar cada tibble em um vetor
+  mutate(raras = map(raras, tibble2vec)) 
+```
+
+```{r}
+# As dezenas raras vão ser comparadas com o resultado do concurso seguinte
+df_raras <- df_raras %>% 
+  mutate(num = num + 1)
+
+df_resultados <- df %>% 
+  select(num, d1:d6) %>% 
+  rowwise() %>% 
+  mutate(
+    res = list(c_across(d1:d6)),
+    .keep = 'unused'
+  ) %>% 
+  ungroup() %>%
+  slice_tail(n = nrow(.) - n_historia)
+    
+# Fazer join com os resultados
+df_memoria <- df_raras %>% 
+  inner_join(
+    df_resultados
   )
 ```
+
+```{r}
+df_sucessos <- df_memoria %>% 
+  rowwise() %>% 
+  mutate(
+    n_sucessos = sum(raras %in% res),
+    .keep = 'unused'
+  ) %>% 
+  ungroup()
+```
+
+```{r}
+df_sucessos %>% 
+  ggplot() +
+    geom_bar(
+      aes(n_sucessos)
+    ) +
+  labs(
+    y = NULL,
+    x = 'quantidade de acertos',
+    title = paste0(
+      'Apostando as ',
+      n_raras,
+      ' dezenas menos sorteadas até então'
+    ),
+    subtitle = paste0(
+      'resultados baseado nos ',
+      nrow(df) - n_historia,
+      ' concursos mais recentes'
+    )
+  )
+```
+
+```{r}
+df_sucessos %>% 
+  count(n_sucessos)
+```
+
+??td?? Transformar em funções. Refazer com um conjunto de dezenas aleatórias.
+
+
+
+
+
+
 
 
 
