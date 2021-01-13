@@ -1,3 +1,23 @@
+
+# List column from several columns ----------------------------------------
+
+
+tb <- tibble(
+  c1 = c(1, 2, 3),
+  c2 = c(4, 5, 6),
+  c3 = c(7, 8, 9)
+)
+
+tb2 <- tb %>% 
+  rowwise() %>% 
+  mutate(
+    v = list(c_across(c1:c3))
+  ) %>% 
+  ungroup()
+
+tb2 %>% view()
+
+
 # 
 # 
 # # Primeira tentativa ------------------------------------------------------

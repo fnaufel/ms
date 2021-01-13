@@ -6,6 +6,7 @@ library(drake)
 library(tidyverse)
 library(rvest)
 library(janitor)
+library(gt)
 
 library(summarytools)
 st_options(
@@ -18,3 +19,4 @@ st_options(
 library(rmarkdown)
 
 conflict_prefer("filter", "dplyr")
+conflict_prefer("view", "tibble")
