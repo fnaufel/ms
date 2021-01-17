@@ -20,5 +20,11 @@ library(scales)
 
 library(rmarkdown)
 
+# Avoid scientific notation and use a comma as decimal separator
+options(
+  scipen = 30,
+  OutDec = ','
+)
+
 conflict_prefer("filter", "dplyr")
 conflict_prefer("view", "tibble")

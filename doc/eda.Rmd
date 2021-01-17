@@ -18,7 +18,7 @@ output:
     fig_width: 7
     fig_height: 5
     fig_caption: true
-    df_print: kable
+    df_print: paged
     self_contained: true
     # code_folding: show
     # keep_md: true
@@ -300,133 +300,112 @@ Não.
 
 Como explicado [no site da CEF](http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena), a quantidade de prêmios que cada ganhador recebe depende da quantidade de números que ele apostou. Os dados não incluem esta informação.
 
-
-# Comportamento da arrecadação
-
-Os dados só contêm o valor da arrecadação total sem interrupção a partir do concurso $1077$, de maio de $2009$.
+Pelos dados, no ano de 2020:
 
 ```{r echo=FALSE}
-df_arrec <- df %>% 
-  select(num, data, arrec) %>% 
-  filter(num >= 1077)
+percentuais <- df %>% 
+  filter(arrec > 0) %>% 
+  transmute(
+    num = num,
+    data = data,
+    prop_sena   = round(100 * (r_sena * g_sena) / arrec    , 2),
+    prop_quina  = round(100 * (r_quina * g_quina) / arrec  , 2),
+    prop_quadra = round(100 * (r_quadra * g_quadra) / arrec, 2)
+  )
+
+quadra <- percentuais %>% 
+  filter(lubridate::year(data) == 2020) %>% 
+  count(prop_quadra) %>% 
+  pull(prop_quadra)
+
+quina <- percentuais %>% 
+  filter(lubridate::year(data) == 2020) %>% 
+  count(prop_quina) %>% 
+  pull(prop_quina)
+
+sena <- percentuais %>% 
+  filter(lubridate::year(data) == 2020 & prop_sena > 0) %>% 
+  count(prop_sena) 
 ```
+
+* [O percentual da arrecadação destinado aos ganhadores da quina foi $`r quina %>% fm()`$.]{.hl}
+
+* [O percentual da arrecadação destinado aos ganhadores da quadra foi $`r quadra %>% fm()`$.]{.hl}
+
+* O percentual da arrecadação destinado aos ganhadores da sena variou loucamente (incluindo percentuais maiores do que $100\%$):
 
 ```{r echo=FALSE}
-df_arrec %>% 
-  ggplot(aes(data, arrec)) +
-    geom_line() +
-    scale_x_date(
-      date_breaks = '1 year',
-      date_labels = '%Y'
-    ) +
-    scale_y_continuous(
-      labels = scales::label_dollar(
-        scale = 1e-6,
-        suffix = 'M',
-        big.mark = '.',
-        decimal.mark = ','
-      )
-    ) +
-    labs(
-      title = 'Arrecadação total ao longo dos anos',
-      x = NULL,
-      y = NULL
-    )
+sena
 ```
-
-Por ano:
-
-```{r echo=FALSE}
-yearly_plot <- function(this_year, df) {
-  
-  p <- df %>% 
-    filter(lubridate::year(data) == this_year) %>% 
-    ggplot(aes(data, arrec)) +
-      geom_line() +
-      scale_x_date(
-        date_breaks = '1 month',
-        date_labels = '%b'
-      ) +
-      scale_y_continuous(
-        limits = c(0, 1200e6),
-        labels = scales::label_dollar(
-          scale = 1e-6,
-          suffix = 'M',
-          big.mark = '.',
-          decimal.mark = ','
-        )
-      ) +
-      labs(
-        title = glue::glue('\n\nArrecadação total em {this_year}'),
-        x = NULL,
-        y = NULL
-      )
-  
-  print(p)
-
-}
-
-anos <- 2009:2020
-
-walk(anos, yearly_plot, df)
-```
-
-Observações:
-
-* Em $2020$, a arrecadação máxima (na virada) foi mais do que o dobro da arrecadação máxima de $2009$.
-
-* Houve picos em novembro de $2015$ e em maio de $2019$.
-
-* Em $25/11/2015$, o prêmio estava acumulado por $10$ concursos seguidos.
-
-* Em $11/05/2019$, o prêmio estava acumulado por $14$ concursos seguidos.
-
-
-# Sequências de prêmios acumulados
-
-```{r echo=FALSE}
-rl <- rle(df$acumulou)
-n_acs <- map(rl$lengths, ~c(rep(0, .x - 1), .x)) %>% unlist()
-
-df %>% 
-  mutate(acs = n_acs) %>% 
-  filter(acumulou == TRUE & arrec > 0) %>% 
-  select(num, data, acs, arrec) %>% 
-  arrange(desc(acs)) %>% 
-  head(10)
-```
-
 
 
 # Número de ganhadores de acordo com arrecadação
 
-## Em geral
+O objetivo final é calcular o valor esperado da receita. Já sabemos o *percentual* da arrecadação destinado aos ganhadores da quina e da quadra. Agora precisamos estimar o *número de ganhadores*.
 
-## Sem prêmio acumulado
+Os dados só contêm o valor da arrecadação total sem interrupção a partir do concurso $1077$, de maio de $2009$.
 
-## Com prêmio acumulado
+```{r echo=FALSE}
+loadd(df_ganhadores)
+```
 
-# Quanto um ganhador da sena recebe?
+Quantidade de ganhadores da sena desde então:
 
-## Em geral
+```{r echo=FALSE}
+df_ganhadores %>% 
+  count(g_sena)
+```
 
-## Sem prêmio acumulado
+Concursos com $5$ ou mais ganhadores da sena; a maioria na virada:
 
-## Com prêmio acumulado
+```{r echo=FALSE}
+df_ganhadores %>% 
+  filter(g_sena > 4) %>% 
+  select(num, data, g_sena)
+```
 
-# Quanto um ganhador da quina recebe?
+## Ganhadores da quina de acordo com a arrecadação
 
-## Em geral
+```{r echo=FALSE}
+loadd(ano_atual, n_anos, inicio, min_arrec)
+```
 
-## Sem prêmio acumulado
+Vamos considerar apenas os últimos $`r n_anos`$ anos e arrecadações menores que $`r min_arrec %>% fm()`$:
 
-## Com prêmio acumulado
+```{r echo=FALSE}
+loadd(plot_ganhadores_quina)
+plot_ganhadores_quina
+```
 
-# Quanto um ganhador da quadra recebe?
+```{r echo=FALSE}
+loadd(lm_quina)
+b05 <- lm_quina$coefficients['(Intercept)'] %>% signif(2) %>% fm()
+b15 <- lm_quina$coefficients['arrec'] %>% signif(2) %>% fm()
+```
 
-## Em geral
+Temos a regressão [$g5 = `r b05` + `r b15` \cdot \text{arrec}$]{.hl}, onde $g5$ é o número de ganhadores da quina.
 
-## Sem prêmio acumulado
+## Rateio da quina de acordo com a arrecadação
 
-## Com prêmio acumulado
+??td?? Podia fazer a regressão direto, sem passar pelo número de ganhadores!
+
+
+## Ganhadores da quadra de acordo com a arrecadação
+
+Vamos considerar apenas os últimos $`r n_anos`$ anos e arrecadações menores que $`r min_arrec %>% fm()`$:
+
+```{r echo=FALSE}
+loadd(plot_ganhadores_quadra)
+plot_ganhadores_quadra
+```
+
+```{r echo=FALSE}
+loadd(lm_quadra)
+b04 <- lm_quadra$coefficients['(Intercept)'] %>% signif(2) %>% fm()
+b14 <- lm_quadra$coefficients['arrec'] %>% signif(2) %>% fm()
+```
+
+Temos a regressão [$g4 = `r b04` + `r b14` \cdot \text{arrec}$]{.hl}, onde $g4$ é o número de ganhadores da quadra.
+
+## Rateio da quadra de acordo com a arrecadação
 

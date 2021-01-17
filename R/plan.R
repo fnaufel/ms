@@ -32,6 +32,39 @@ the_plan <- drake_plan(
   # Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
   df_sucessos_mesmas = computar_acertos(df_vetor, mesmas_dezenas),
   
+  # Quantidade de ganhadores da quina e da quadra de acordo com a arrecadação
+  df_ganhadores = construir_df_ganhadores(df_vetor),
+  ano_atual = Sys.Date() %>% lubridate::ymd(),
+  n_anos    = 2,
+  inicio    = ano_atual - lubridate::years(n_anos),
+  min_arrec = 300e6,
+  
+  plot_ganhadores_quadra = plot_ganhadores(
+    df_ganhadores, 
+    inicio, 
+    min_arrec, 
+    'quadra'
+  ),
+
+  plot_ganhadores_quina = plot_ganhadores(
+    df_ganhadores, 
+    inicio, 
+    min_arrec, 
+    'quina'
+  ),
+  
+  lm_quina = lm(
+    g_quina ~ arrec, 
+    data = df_ganhadores %>% 
+      filter(data >= inicio & arrec < min_arrec)
+  ),
+  
+  lm_quadra = lm(
+    g_quadra ~ arrec, 
+    data = df_ganhadores %>% 
+      filter(data >= inicio & arrec < min_arrec)
+  ),
+  
   # Análise exploratória
   eda = target(
     command = {
