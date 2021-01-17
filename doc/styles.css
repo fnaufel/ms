@@ -3,11 +3,12 @@
 a {
   color: #7c480d;
   font-weight: 500;
+  text-decoration: underline;
 }
 
-/* Links in main text (not navigation) */
-main a {
-  text-decoration: underline;
+/* Links in TOC */
+#TOC a {
+  text-decoration: none;
 }
 
 /* I don't like the frame around images */

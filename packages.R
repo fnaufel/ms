@@ -16,6 +16,8 @@ st_options(
   dfSummary.graph.magnif = .75
 )
 
+library(scales)
+
 library(rmarkdown)
 
 conflict_prefer("filter", "dplyr")

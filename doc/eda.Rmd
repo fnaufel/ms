@@ -220,7 +220,7 @@ df_summary%>% print(method = 'render')
 
 ::: {.rmdwarning}
 
-Cada sorteio é independente, e a Lei dos Grandes Números só diz respeito ao comportamento dos resultados quando o número de sorteios *tende ao infinito*. Até agora, houve $`r df %>% nrow() %>% fm()`$ sorteios, uma quantidade infinitamente menor do que infinitos sorteios. 😜
+Cada sorteio é independente, e a [Lei dos Grandes Números](https://pt.wikipedia.org/wiki/Lei_dos_grandes_n%C3%BAmeros) só diz respeito ao comportamento dos resultados quando o número de sorteios *tende ao infinito*. Até agora, houve $`r df %>% nrow() %>% fm()`$ sorteios, uma quantidade infinitamente menor do que infinitos sorteios. 😜
 
 As informações desta seção são apenas curiosidades. 
 
@@ -270,32 +270,31 @@ Todas as dezenas já foram sorteadas alguma vez.
 Um erro comum é achar que as dezenas que foram menos sorteadas em concursos anteriores têm probabilidade maior de sair no próximo concurso.
 
 ```{r echo=FALSE}
-loadd(df_sucessos, n_raras)
-n_concursos <- nrow(df_sucessos)
+loadd(df_sucessos_raras, n_raras)
+n_concursos <- nrow(df_sucessos_raras)
 ```
 
 Em uma simulação, jogamos, em cada concurso, as $`r n_raras`$ dezenas que tinham a menor frequência acumulada em todos os concursos anteriores. As quantidades de acertos em $`r n_concursos %>% fm()`$ concursos foram:
 
 ```{r echo=FALSE}
-df_sucessos %>% 
-  count(n_acertos) %>% 
-  gt()
+df_sucessos_raras %>% 
+  count(n_acertos)
+```
+
+```{r echo=FALSE}
+loadd(mesmas_dezenas, df_sucessos_mesmas)
+dezenas <- mesmas_dezenas$dezenas[[1]]
+```
+
+Para comparar, eis os números de acertos se jogarmos as mesmas $`r n_raras`$ dezenas ($`r sort(dezenas)`$) em todos os concursos:
+
+```{r echo=FALSE}
+df_sucessos_mesmas %>% 
+  count(n_acertos)
 ```
 
 
 # Arrecadação é soma de (rateios $\times$ ganhadores)?
-
-```{r}
-df %>% 
-  filter(arrec > 0) %>% 
-  mutate(
-    pago_sena = g_sena * r_sena,
-    pago_quina = g_quina * r_quina,
-    pago_quadra = g_quadra * r_quadra,
-    diferenca = arrec - pago_quadra - pago_quina - pago_sena
-  ) %>% 
-  summarize(sum(diferenca == 0))
-```
 
 Não.
 
@@ -303,6 +302,101 @@ Como explicado [no site da CEF](http://loterias.caixa.gov.br/wps/portal/loterias
 
 
 # Comportamento da arrecadação
+
+Os dados só contêm o valor da arrecadação total sem interrupção a partir do concurso $1077$, de maio de $2009$.
+
+```{r echo=FALSE}
+df_arrec <- df %>% 
+  select(num, data, arrec) %>% 
+  filter(num >= 1077)
+```
+
+```{r echo=FALSE}
+df_arrec %>% 
+  ggplot(aes(data, arrec)) +
+    geom_line() +
+    scale_x_date(
+      date_breaks = '1 year',
+      date_labels = '%Y'
+    ) +
+    scale_y_continuous(
+      labels = scales::label_dollar(
+        scale = 1e-6,
+        suffix = 'M',
+        big.mark = '.',
+        decimal.mark = ','
+      )
+    ) +
+    labs(
+      title = 'Arrecadação total ao longo dos anos',
+      x = NULL,
+      y = NULL
+    )
+```
+
+Por ano:
+
+```{r echo=FALSE}
+yearly_plot <- function(this_year, df) {
+  
+  p <- df %>% 
+    filter(lubridate::year(data) == this_year) %>% 
+    ggplot(aes(data, arrec)) +
+      geom_line() +
+      scale_x_date(
+        date_breaks = '1 month',
+        date_labels = '%b'
+      ) +
+      scale_y_continuous(
+        limits = c(0, 1200e6),
+        labels = scales::label_dollar(
+          scale = 1e-6,
+          suffix = 'M',
+          big.mark = '.',
+          decimal.mark = ','
+        )
+      ) +
+      labs(
+        title = glue::glue('\n\nArrecadação total em {this_year}'),
+        x = NULL,
+        y = NULL
+      )
+  
+  print(p)
+
+}
+
+anos <- 2009:2020
+
+walk(anos, yearly_plot, df)
+```
+
+Observações:
+
+* Em $2020$, a arrecadação máxima (na virada) foi mais do que o dobro da arrecadação máxima de $2009$.
+
+* Houve picos em novembro de $2015$ e em maio de $2019$.
+
+* Em $25/11/2015$, o prêmio estava acumulado por $10$ concursos seguidos.
+
+* Em $11/05/2019$, o prêmio estava acumulado por $14$ concursos seguidos.
+
+
+# Sequências de prêmios acumulados
+
+```{r echo=FALSE}
+rl <- rle(df$acumulou)
+n_acs <- map(rl$lengths, ~c(rep(0, .x - 1), .x)) %>% unlist()
+
+df %>% 
+  mutate(acs = n_acs) %>% 
+  filter(acumulou == TRUE & arrec > 0) %>% 
+  select(num, data, acs, arrec) %>% 
+  arrange(desc(acs)) %>% 
+  head(10)
+```
+
+
 
 # Número de ganhadores de acordo com arrecadação
 
