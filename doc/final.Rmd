@@ -1,0 +1,234 @@
+---
+title: 'Estratégias para a Mega-sena'
+author: 'fnaufel'
+email: 'https://fnaufel.github.io/'
+date: 'Versão de `r format(Sys.Date(), "%d/%m/%Y")`'
+lang: 'pt'
+# TODO: include LaTeX fields
+output: 
+  html_document:
+    theme: readable
+           # https://bootswatch.com/3/readable/
+    highlight: tango
+    css: styles.css
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    fig_width: 7
+    fig_height: 5
+    fig_caption: true
+    df_print: paged
+    self_contained: true
+    # code_folding: show
+    # keep_md: true
+    # includes:
+    #   in_header: header.html
+    #   before_body: doc_prefix.html
+    #   after_body: doc_suffix.html
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+
+opts_chunk$set(
+  echo = FALSE, 
+  # collapse = TRUE,
+  # cache = TRUE,
+  out.width = "70%",
+  fig.align = 'center',
+  fig.width = 6,
+  fig.asp = 0.618,  # 1 / phi
+  fig.show = "hold"
+)
+
+options(dplyr.print_min = 6, dplyr.print_max = 6)
+
+# Supress crayon output
+options(crayon.enabled = FALSE)
+
+#library()
+
+# For nice tables
+# library(gt)
+
+# For nice dataframe summaries
+library(summarytools)
+st_options(
+  plain.ascii = FALSE,
+  dfSummary.varnumbers = FALSE,
+  dfSummary.style = 'grid',
+  dfSummary.graph.magnif = .75
+)
+
+# Tidy!
+library(tidyverse)
+
+# Sober theme for ggplot
+theme_set(
+  theme_linedraw() +                         # Set simple theme for ggplot
+    theme(                                   # with some tweaks
+      axis.title.y.left = element_text(
+         angle = 0,                          # Never rotate y axis title
+         margin = margin(r = 20),            # Separate y axis title a little 
+         vjust = .5                          # Leave y axis title in the middle
+      ),
+      axis.title.x.bottom = element_text(
+         margin = margin(t = 20)             # Separate x axis title a little 
+      ),
+      axis.line = element_blank(),           # No axis lines
+      panel.border = element_blank(),        # No frame
+      panel.grid.minor = element_blank()     # No grid minor lines
+    )
+)
+
+# Avoid scientific notation and use a comma as decimal separator
+options(
+  scipen = 15,
+  OutDec = ','
+)
+
+# Format a number with thousand separators (default point)
+# and decimal comma enclosed in curly braces for LaTeX printing.
+# CAREFUL: if called outside math mode, will print the braces!
+fm <- function(x, big = '.', decimal = '{,}') {
+  if (!is.numeric(x)) {
+    x
+  } else {
+    prettyNum(x, big.mark = big, decimal.mark = decimal)
+  }
+
+}
+
+# To center the results of a chunk (image, video etc.)
+# Usage: 
+#         out.extra=center()
+#         
+center <- function(){
+  
+  if (is_html_output()) {
+    'class="center"'
+  }
+  
+}
+
+
+# To embed YT videos in HTML and the link (centered) in LaTeX
+embed_yt <- function(code) {
+
+  if (is_html_output()) {
+    include_url(
+      paste0(
+        'https://www.youtube.com/embed/',
+        code
+      )
+    )
+  } else {
+    cat(
+      paste0(
+        '```{=latex}\n',
+        '\\begin{center} \\url{https://youtu.be/',
+        code,
+        '} \\end{center}\n',
+        '```'
+      )
+    )
+  }
+  
+}
+
+library(drake)
+
+```
+
+```{js javascript-init, echo=FALSE}
+
+// Make off-site links open in a new window/tab
+function changeTargets() {
+  $("a").attr(
+    "target", function() {
+      // Load local links locally
+      if (this.host == location.host) return "_self"
+      // Load off-site links in a new window
+      else return "_blank";
+    }
+  );
+}
+
+// Execute when document is ready
+$(
+  changeTargets
+)
+```
+
+# Introdução
+
+???
+
+# Dicionário
+
+```{r echo=FALSE, message=FALSE}
+loadd(df_summary)
+```
+
+`num`
+
+  : número do concurso
+
+`data`
+
+  : data do concurso
+
+`d1 ... d5`
+
+  : dezenas sorteadas
+  
+`arrec`
+
+  : arrecadação total
+  
+`g_sena, g_quina, g_quadra`
+
+  : quantidades de ganhadores
+  
+`r_sena, r_quina, r_quadra`
+
+  : rateios para cada faixa, i.e., valor de cada prêmio *individual* na faixa
+  
+`acumulou`
+
+  : `true` se o prêmio da sena acumulou
+  
+`valor_ac`
+
+  : valor acumulado
+  
+`est_prox`
+
+  : estimativa do prêmio *total* da sena no próximo concurso
+  
+`ac_virada`
+
+  : valor acumulado até agora para a mega-sena da virada
+  
+
+# Estratégias que não funcionam
+
+## Dezenas mais raras
+
+## Dezenas mais frequentes
+
+## Dezenas pares, ímpares, em quadrantes, etc.
+
+
+# Estratégias que funcionam
+
+
+# Probabilidades
+
+
+
+# Rateios de acordo com a arrecadação
+
+
+# Lucro esperado
+

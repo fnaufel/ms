@@ -220,7 +220,7 @@ df_summary%>% print(method = 'render')
 
 ::: {.rmdwarning}
 
-Cada sorteio é independente, e a [Lei dos Grandes Números](https://pt.wikipedia.org/wiki/Lei_dos_grandes_n%C3%BAmeros) só diz respeito ao comportamento dos resultados quando o número de sorteios *tende ao infinito*. Até agora, houve $`r df %>% nrow() %>% fm()`$ sorteios, uma quantidade infinitamente menor do que infinitos sorteios. 😜
+Cada sorteio é independente, e a [Lei dos Grandes Números](https://pt.wikipedia.org/wiki/Lei_dos_grandes_n%C3%BAmeros) só fala sobre o comportamento dos resultados *quando o número de sorteios tende ao infinito*. Até agora, houve $`r df %>% nrow() %>% fm()`$ sorteios, uma quantidade infinitamente menor do que infinitos sorteios. 😜
 
 As informações desta seção são apenas curiosidades. 
 
@@ -265,7 +265,7 @@ dezenas %>%
 Todas as dezenas já foram sorteadas alguma vez.
 
 
-## Experimento: jogando as dezenas que menos saíram
+## Jogando as dezenas mais raras / mais frequentes
 
 Um erro comum é achar que as dezenas que foram menos sorteadas em concursos anteriores têm probabilidade maior de sair no próximo concurso.
 
@@ -281,18 +281,37 @@ df_sucessos_raras %>%
   count(n_acertos)
 ```
 
+Outras pessoas dizem que as dezenas mais frequentes são as mais "quentes", e têm maior probabilidade de sair. Em outra simulação, jogamos, em cada concurso, as $`r n_raras`$ dezenas que tinham a *maior* frequência acumulada em todos os concursos anteriores. As quantidades de acertos em $`r n_concursos %>% fm()`$ concursos foram:
+
 ```{r echo=FALSE}
-loadd(mesmas_dezenas, df_sucessos_mesmas)
-dezenas <- mesmas_dezenas$dezenas[[1]]
+loadd(df_sucessos_freqs)
+df_sucessos_freqs %>% 
+  count(n_acertos)
 ```
 
-Para comparar, eis os números de acertos se jogarmos as mesmas $`r n_raras`$ dezenas ($`r sort(dezenas)`$) em todos os concursos:
 
 ```{r echo=FALSE}
+loadd(df_vetor, n_raras)
+source('../R/computar_acertos.R')
+
+# Jogar as mesmas 6 dezenas (escolhidas ao acaso) em todos os jogos
+mesmas_dezenas <- tibble(
+  num = 1:nrow(df_vetor),
+  dezenas = list(sample(1:60, n_raras))
+)
+```
+
+Para comparar, eis os números de acertos se jogarmos as mesmas $`r n_raras`$ dezenas ($`r sort(mesmas_dezenas$dezenas[[1]])`$) em todos os concursos:
+
+```{r echo=FALSE}
+# Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
+df_sucessos_mesmas <- computar_acertos(df_vetor, mesmas_dezenas)
+
 df_sucessos_mesmas %>% 
   count(n_acertos)
 ```
 
+Quaisquer diferenças entre as $3$ situações são pequenas, devidas somente ao acaso.
 
 # Arrecadação é soma de (rateios $\times$ ganhadores)?
 
@@ -332,80 +351,10 @@ sena <- percentuais %>%
 
 * [O percentual da arrecadação destinado aos ganhadores da quadra foi $`r quadra %>% fm()`$.]{.hl}
 
-* O percentual da arrecadação destinado aos ganhadores da sena variou loucamente (incluindo percentuais maiores do que $100\%$):
+* O percentual da arrecadação destinado aos ganhadores da sena variou loucamente (incluindo percentuais maiores do que $100\%$). Sinceramente, não sei o que está havendo aqui.
 
 ```{r echo=FALSE}
 sena
 ```
 
-
-# Número de ganhadores de acordo com arrecadação
-
-O objetivo final é calcular o valor esperado da receita. Já sabemos o *percentual* da arrecadação destinado aos ganhadores da quina e da quadra. Agora precisamos estimar o *número de ganhadores*.
-
-Os dados só contêm o valor da arrecadação total sem interrupção a partir do concurso $1077$, de maio de $2009$.
-
-```{r echo=FALSE}
-loadd(df_ganhadores)
-```
-
-Quantidade de ganhadores da sena desde então:
-
-```{r echo=FALSE}
-df_ganhadores %>% 
-  count(g_sena)
-```
-
-Concursos com $5$ ou mais ganhadores da sena; a maioria na virada:
-
-```{r echo=FALSE}
-df_ganhadores %>% 
-  filter(g_sena > 4) %>% 
-  select(num, data, g_sena)
-```
-
-## Ganhadores da quina de acordo com a arrecadação
-
-```{r echo=FALSE}
-loadd(ano_atual, n_anos, inicio, min_arrec)
-```
-
-Vamos considerar apenas os últimos $`r n_anos`$ anos e arrecadações menores que $`r min_arrec %>% fm()`$:
-
-```{r echo=FALSE}
-loadd(plot_ganhadores_quina)
-plot_ganhadores_quina
-```
-
-```{r echo=FALSE}
-loadd(lm_quina)
-b05 <- lm_quina$coefficients['(Intercept)'] %>% signif(2) %>% fm()
-b15 <- lm_quina$coefficients['arrec'] %>% signif(2) %>% fm()
-```
-
-Temos a regressão [$g5 = `r b05` + `r b15` \cdot \text{arrec}$]{.hl}, onde $g5$ é o número de ganhadores da quina.
-
-## Rateio da quina de acordo com a arrecadação
-
-??td?? Podia fazer a regressão direto, sem passar pelo número de ganhadores!
-
-
-## Ganhadores da quadra de acordo com a arrecadação
-
-Vamos considerar apenas os últimos $`r n_anos`$ anos e arrecadações menores que $`r min_arrec %>% fm()`$:
-
-```{r echo=FALSE}
-loadd(plot_ganhadores_quadra)
-plot_ganhadores_quadra
-```
-
-```{r echo=FALSE}
-loadd(lm_quadra)
-b04 <- lm_quadra$coefficients['(Intercept)'] %>% signif(2) %>% fm()
-b14 <- lm_quadra$coefficients['arrec'] %>% signif(2) %>% fm()
-```
-
-Temos a regressão [$g4 = `r b04` + `r b14` \cdot \text{arrec}$]{.hl}, onde $g4$ é o número de ganhadores da quadra.
-
-## Rateio da quadra de acordo com a arrecadação
 

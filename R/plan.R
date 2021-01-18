@@ -1,5 +1,7 @@
 the_plan <- drake_plan(
 
+# Limpeza e resumo --------------------------------------------------------
+
   # Ler e limpar
   df = ler_resultados(file_in('Dados/resultados.html')),
   
@@ -17,59 +19,42 @@ the_plan <- drake_plan(
   # Bom para computar número de acertos em simulações
   df_vetor = criar_col_resultado(df),
   
-  # Dezenas em ordem decrescente de freq. acum. até o concurso anterior
+
+# Jogar dezenas raras/frequentes ------------------------------------------
+
+  # Dezenas em ordem crescente de freq. acum. até o concurso anterior
   df_raras = criar_df_raras(df_vetor),
+
+  # Mais raras
   n_raras = 8,
-  dezenas_raras = escolher_dezenas(df_raras, n_dezenas = n_raras),
+  dezenas_raras = escolher_dezenas(df_raras, n_dezenas = n_raras, desc=FALSE),
   # Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
   df_sucessos_raras = computar_acertos(df_vetor, dezenas_raras),
-  
-  # Jogar as mesmas 6 dezenas (escolhidas ao acaso) em todos os jogos
-  mesmas_dezenas = tibble(
-    num = 1:nrow(df_vetor),
-    dezenas = list(sample(1:60, n_raras))
-  ),
-  # Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
-  df_sucessos_mesmas = computar_acertos(df_vetor, mesmas_dezenas),
-  
-  # Quantidade de ganhadores da quina e da quadra de acordo com a arrecadação
-  df_ganhadores = construir_df_ganhadores(df_vetor),
-  ano_atual = Sys.Date() %>% lubridate::ymd(),
-  n_anos    = 2,
-  inicio    = ano_atual - lubridate::years(n_anos),
-  min_arrec = 300e6,
-  
-  plot_ganhadores_quadra = plot_ganhadores(
-    df_ganhadores, 
-    inicio, 
-    min_arrec, 
-    'quadra'
-  ),
 
-  plot_ganhadores_quina = plot_ganhadores(
-    df_ganhadores, 
-    inicio, 
-    min_arrec, 
-    'quina'
-  ),
+  # Mais frquentes
+  n_freqs = 8,
+  dezenas_freqs = escolher_dezenas(df_raras, n_dezenas = n_freqs, desc=TRUE),
+  # Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
+  df_sucessos_freqs = computar_acertos(df_vetor, dezenas_freqs),
+
+
   
-  lm_quina = lm(
-    g_quina ~ arrec, 
-    data = df_ganhadores %>% 
-      filter(data >= inicio & arrec < min_arrec)
-  ),
-  
-  lm_quadra = lm(
-    g_quadra ~ arrec, 
-    data = df_ganhadores %>% 
-      filter(data >= inicio & arrec < min_arrec)
-  ),
-  
+
+# Relatórios --------------------------------------------------------------
+
   # Análise exploratória
   eda = target(
     command = {
       rmarkdown::render(knitr_in("doc/eda.Rmd"))
       file_out("doc/eda.html")
+    }
+  ),
+
+  # Relatório final
+  final = target(
+    command = {
+      rmarkdown::render(knitr_in("doc/final.Rmd"))
+      file_out("doc/final.html")
     }
   )
 

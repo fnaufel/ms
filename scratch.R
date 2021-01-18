@@ -1,5 +1,118 @@
 
 
+# Regressão (plan.R) ------------------------------------------------------
+
+# Rateio de acordo com a arrecadação --------------------------------------
+
+  # Quantidade de ganhadores da quina e da quadra de acordo com a arrecadação
+  df_ganhadores = construir_df_ganhadores(df_vetor),
+  ano_atual = Sys.Date() %>% lubridate::ymd(),
+  n_anos    = 2,
+  inicio    = ano_atual - lubridate::years(n_anos),
+  min_arrec = 300e6,
+  
+  plot_ganhadores_quadra = plot_ganhadores(
+    df_ganhadores, 
+    inicio, 
+    min_arrec, 
+    'quadra'
+  ),
+
+  plot_ganhadores_quina = plot_ganhadores(
+    df_ganhadores, 
+    inicio, 
+    min_arrec, 
+    'quina'
+  ),
+  
+  lm_quina = lm(
+    g_quina ~ arrec, 
+    data = df_ganhadores %>% 
+      filter(data >= inicio & arrec < min_arrec)
+  ),
+  
+  lm_quadra = lm(
+    g_quadra ~ arrec, 
+    data = df_ganhadores %>% 
+      filter(data >= inicio & arrec < min_arrec)
+  ),
+
+
+# Regressão (primeira tentativa, EDA) ------------------------------------
+
+# Número de ganhadores de acordo com arrecadação
+
+O objetivo final é calcular o valor esperado da receita. Já sabemos o *percentual* da arrecadação destinado aos ganhadores da quina e da quadra. Agora precisamos estimar o *número de ganhadores*.
+
+Os dados só contêm o valor da arrecadação total sem interrupção a partir do concurso $1077$, de maio de $2009$.
+
+```{r echo=FALSE}
+loadd(df_ganhadores)
+```
+
+Quantidade de ganhadores da sena desde então:
+
+```{r echo=FALSE}
+df_ganhadores %>% 
+  count(g_sena)
+```
+
+Concursos com $5$ ou mais ganhadores da sena; a maioria na virada:
+
+```{r echo=FALSE}
+df_ganhadores %>% 
+  filter(g_sena > 4) %>% 
+  select(num, data, g_sena)
+```
+
+## Ganhadores da quina de acordo com a arrecadação
+
+```{r echo=FALSE}
+loadd(ano_atual, n_anos, inicio, min_arrec)
+```
+
+Vamos considerar apenas os últimos $`r n_anos`$ anos e arrecadações menores que $`r min_arrec %>% fm()`$:
+
+```{r echo=FALSE}
+loadd(plot_ganhadores_quina)
+plot_ganhadores_quina
+```
+
+```{r echo=FALSE}
+loadd(lm_quina)
+b05 <- lm_quina$coefficients['(Intercept)'] %>% signif(2) %>% fm()
+b15 <- lm_quina$coefficients['arrec'] %>% signif(2) %>% fm()
+```
+
+Temos a regressão [$g5 = `r b05` + `r b15` \cdot \text{arrec}$]{.hl}, onde $g5$ é o número de ganhadores da quina.
+
+## Rateio da quina de acordo com a arrecadação
+
+Na verdade, podemos fazer a regressão direto, sem passar pelo número de ganhadores:
+
+
+## Ganhadores da quadra de acordo com a arrecadação
+
+Vamos considerar apenas os últimos $`r n_anos`$ anos e arrecadações menores que $`r min_arrec %>% fm()`$:
+
+```{r echo=FALSE}
+loadd(plot_ganhadores_quadra)
+plot_ganhadores_quadra
+```
+
+```{r echo=FALSE}
+loadd(lm_quadra)
+b04 <- lm_quadra$coefficients['(Intercept)'] %>% signif(2) %>% fm()
+b14 <- lm_quadra$coefficients['arrec'] %>% signif(2) %>% fm()
+```
+
+Temos a regressão [$g4 = `r b04` + `r b14` \cdot \text{arrec}$]{.hl}, onde $g4$ é o número de ganhadores da quadra.
+
+## Rateio da quadra de acordo com a arrecadação
+
+
+
+
 
 # Comportamento da arrecadação
 
