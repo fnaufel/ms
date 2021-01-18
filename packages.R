@@ -28,3 +28,4 @@ options(
 
 conflict_prefer("filter", "dplyr")
 conflict_prefer("view", "tibble")
+conflict_prefer("lag", "dplyr")
