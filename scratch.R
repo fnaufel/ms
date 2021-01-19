@@ -1,10 +1,105 @@
 
+loadd(df_vetor)
+
+
+
+# Comportamento dos rateios -----------------------------------------------
+
+# A partir de num = 869, est_prox está preenchida
+# A partir de num = 1077, arrec está preenchida
+
+# Criar lag e comparação a partir de 2010 (concurso 1141)
+df <- df_vetor %>% 
+  mutate(
+    est_arrec = lag(est_prox),
+    .keep = 'unused'
+  ) %>% 
+  filter(num >= 1141)
+
+# Quina
+df %>% 
+  ggplot(aes(num, r_quina)) +
+    geom_line()
+
+# Quadra
+df %>% 
+  ggplot(aes(num, r_quadra)) +
+    geom_line()
+
+
+# rateio ~ rateio anterior ------------------------------------
+
+# rateios anteriores
+df2 <- df %>% 
+  mutate(
+    r_quadra_ant = lag(r_quadra, default = r_quadra[1]),
+    r_quina_ant = lag(r_quina, default = r_quina[1])
+  )
+
+# Treino: até meio de 2020, sem viradas
+df2_treino <- df2 %>% 
+  filter(
+    (year(data) == 2020 & month(data) <= 6) |
+      (year(data) <= 2019)
+  ) %>% 
+  filter(!(month(data) == 12 & day(data) == 31))
+  
+# Teste: segundo semestre de 2020, sem virada
+df2_teste <- df2 %>% 
+  filter(
+    year(data) == 2020 & month(data) > 6
+  ) %>% 
+  filter(!(month(data) == 12 & day(data) == 31))
+
+mod2a <- lm(r_quadra ~ r_quadra_ant, data = df2_treino)
+mod2a %>% summary()
+mod2a %>% gglm()
+
+mod2i <- lm(r_quina ~ r_quina_ant, data = df2_treino)
+mod2i %>% summary()
+mod2i %>% gglm()
+
+teste2a <- mod2a %>% 
+  augment(newdata = df2_teste, interval = 'prediction')
+
+teste2a %>% 
+  # Plot com previsões e intervalo
+  ggplot(aes(r_quadra_ant, r_quadra)) +
+    geom_point() +
+    geom_line(aes(y = .fitted), color = 'blue') +
+    geom_ribbon(
+      aes(ymin = .lower, ymax = .upper), 
+      fill = 'light blue', 
+      alpha = 0.3
+    )
+
+teste2a %>% 
+  ggplot(aes(.fitted, .resid)) + 
+    geom_point()
+
+teste2i <- mod2i %>% 
+  augment(newdata = df2_teste, interval = 'prediction')
+
+teste2i %>% 
+  # Plot com previsões e intervalo
+  ggplot(aes(r_quina_ant, r_quina)) +
+    geom_point() +
+    geom_line(aes(y = .fitted), color = 'blue') +
+    geom_ribbon(
+      aes(ymin = .lower, ymax = .upper), 
+      fill = 'light blue', 
+      alpha = 0.3
+    )
+
+teste2i %>% 
+  ggplot(aes(.fitted, .resid)) + 
+    geom_point()
+
 
 # Estimativa de arrecadação -----------------------------------------------
 
-loadd(df_vetor)
-
 # A partir de num = 869, est_prox está preenchida
+# A partir de num = 1077, arrec está preenchida
 df_vetor %>% 
   select(num, data, arrec, est_prox) %>% 
   filter(num > 869 & est_prox == 0)
@@ -19,36 +114,349 @@ df_vetor %>%
   ) %>% 
   filter(arrec > 0)
 
-# Criar lag e comparação a partir de 2018 (concurso 2001)
+df_vetor %>% 
+  filter(lubridate::year(data) == 2010) %>% 
+  head()
+
+# Criar lag e comparação a partir de 2010 (concurso 1141)
 df_erro_est <- df_vetor %>% 
   select(num, data, arrec, est_prox) %>% 
   mutate(
     est_arrec = lag(est_prox),
     .keep = 'unused'
   ) %>% 
-  filter(num >= 2001) %>% 
+  filter(num >= 1141) %>% 
   mutate(
-    erro = abs(arrec - est_arrec)
+    erro = arrec - est_arrec
   )
   
-# Tabela: maioria dos erros está entre 1e7 e 1e8!!! Entre 10 e 100 milhões!
+# Tabela: 
+# 
+# * Maioria das vezes, estimativa ficou abaixo da arrecadação.
+# 
+# * Maioria dos erros está entre 1e7 e 1e8!!! Entre 10 e 100 milhões!
+b <- c(
+  -1 * rev(c(1e5, 1e6, 1e7, 1e8, 1e9, 1e20)), 
+  c(0, 1e5, 1e6, 1e7, 1e8, 1e9, 1e20)
+)
 df_erro_est %>% 
   pull(erro) %>% 
   cut(
-    breaks = c(0, 1e5, 1e6, 1e7, 1e8, 1e9, 1e20),
+    breaks = b,
     right = FALSE
   ) %>% 
   table()
 
 # Plot:
 # A arrecadação é quase sempre maior que a estimativa.
-# Vou fazer uma regressão para estimar a arrecadação a partir da estimativa!!!
 df_erro_est %>% 
   ggplot(aes(num)) +
     geom_line(aes(y = arrec, color = 'arrecadação')) +
     geom_line(aes(y = est_arrec, color = 'estimativa'))
+
+
+
+# Regressão arrec ~ est_arrec ---------------------------------------------
+
+# Histograma de tudo
+df_erro_est %>% 
+  ggplot(aes(erro)) +
+    geom_histogram(bins = 100)
   
+# Scatterplot de tudo
+df_erro_est %>% 
+  ggplot() +
+    geom_point(aes(x = est_arrec, y = arrec))
+
+# Histograma sem as viradas
+df_erro_est %>% 
+  filter(!(month(data) == 12 & day(data) == 31)) %>%
+  ggplot(aes(erro)) +
+    geom_histogram(bins = 100)
+
+# Scatterplot sem as viradas
+df_erro_est %>% 
+  filter(!(month(data) == 12 & day(data) == 31)) %>%
+  ggplot(aes(x = est_arrec, y = arrec)) +
+    geom_point() +
+    geom_smooth(method = 'lm')
+
+# Treino: sem viradas, até fim de 2019
+df_erro_treino <- 
+  df_erro_est %>% 
+    filter(year(data) <= 2019) %>% 
+    filter(!(month(data) == 12 & day(data) == 31))
+
+# Teste: sem viradas, só ano 2020
+df_erro_teste <- 
+  df_erro_est %>% 
+    filter(year(data) == 2020) %>% 
+    filter(!(month(data) == 12 & day(data) == 31))
   
+# Scatterplot treino
+df_erro_treino %>% 
+  ggplot(aes(x = est_arrec, y = arrec)) +
+    geom_point() +
+    geom_smooth(method = 'lm')
+
+# Histograma treino
+df_erro_treino %>% 
+  ggplot(aes(erro)) +
+    geom_histogram(bins = 300)
+  
+# Modelo arrec ~ est_arrec
+# Treino
+modelo_arrec <- lm(arrec ~ est_arrec, data = df_erro_treino)
+modelo_arrec_fit <- tidy(modelo_arrec) 
+modelo_arrec_glance <- glance(modelo_arrec) 
+df_erro_treino_augmented <- augment(modelo_arrec, df_erro_treino)
+
+# Diagnóstico do treino: temos um problema de heteroskedacity!
+gglm(modelo_arrec)
+
+# Teste
+df_erro_teste_augmented <- augment(
+  modelo_arrec, 
+  newdata = df_erro_teste,
+  interval = 'prediction'
+)
+
+# Plot com previsões e intervalo
+df_erro_teste_augmented %>% 
+  ggplot(aes(est_arrec, arrec)) +
+    geom_point() +
+    geom_line(aes(y = .fitted), color = 'blue') +
+    geom_ribbon(
+      aes(ymin = .lower, ymax = .upper), 
+      fill = 'light blue', 
+      alpha = 0.3
+    )
+
+# Plot resíduos por valores previstos: 
+# Muitos resíduos negativos: a regressão está estimando arrecadação 
+# maior do que realmente é, principalmente para est_arrec alto.
+# 
+# Ou seja, a regressão está superestimando.
+df_erro_teste_augmented %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = 'dashed')
+
+
+# Vamos incluir o primeiro semestre de 2020 no conjunto de treino
+df_erro_treino2 <- 
+  df_erro_est %>% 
+    filter(
+      (year(data) == 2020 & month(data) <= 6) |
+        (year(data) <= 2019)
+    ) %>% 
+    filter(!(month(data) == 12 & day(data) == 31))
+
+# Teste2
+df_erro_teste2 <- 
+  df_erro_est %>% 
+    filter(year(data) == 2020 & month(data) > 6) %>% 
+    filter(!(month(data) == 12 & day(data) == 31))
+
+# Modelo arrec ~ est_arrec
+# Treino
+modelo_arrec2 <- lm(arrec ~ est_arrec, data = df_erro_treino2)
+modelo_arrec_fit2 <- tidy(modelo_arrec2) 
+modelo_arrec_glance2 <- glance(modelo_arrec2) 
+df_erro_treino_augmented2 <- augment(modelo_arrec2, df_erro_treino2)
+
+# Diagnóstico do treino: continua o problema de heteroskedacity
+gglm(modelo_arrec2)
+
+# Teste
+df_erro_teste_augmented2 <- augment(
+  modelo_arrec2, 
+  newdata = df_erro_teste2,
+  interval = 'prediction'
+)
+
+# Plot com previsões e intervalo
+df_erro_teste_augmented2 %>% 
+  ggplot(aes(est_arrec, arrec)) +
+    geom_point() +
+    geom_line(aes(y = .fitted), color = 'blue') +
+    geom_ribbon(
+      aes(ymin = .lower, ymax = .upper), 
+      fill = 'light blue', 
+      alpha = 0.3
+    )
+
+# Plot resíduos por valores previstos: melhorou um pouco
+df_erro_teste_augmented2 %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+    geom_point() +
+    geom_hline(yintercept = 0, linetype = 'dashed')
+
+
+# Rateio quina ~ arrec ----------------------------------------------------
+
+# df completo
+df_rateios <- df_vetor %>% 
+  select(num, data, arrec, est_prox, starts_with('r_')) %>% 
+  mutate(
+    est_arrec = lag(est_prox),
+    .keep = 'unused'
+  ) %>% 
+  filter(num >= 1141) 
+
+# df treino: até meio de 2020, sem viradas
+df_rateios_treino <- df_rateios %>% 
+  filter(
+    (year(data) == 2020 & month(data) <= 6) |
+      (year(data) <= 2019)
+  ) %>% 
+  filter(!(month(data) == 12 & day(data) == 31))
+
+# df teste
+df_rateios_teste <- df_rateios %>% 
+  filter(year(data) == 2020 & month(data) > 6) %>% 
+  filter(!(month(data) == 12 & day(data) == 31))
+
+# scatterplot
+df_rateios_treino %>% 
+  filter(arrec < 5e7) %>% 
+  ggplot(aes(arrec, r_quina)) +
+    geom_point() +
+    geom_smooth(method = 'lm')
+
+# Regressão rateio quina ~ est_arrec -------------------------------------
+
+# df completo
+df_rateios <- df_vetor %>% 
+  select(num, data, arrec, est_prox, starts_with('r_')) %>% 
+  mutate(
+    est_arrec = lag(est_prox),
+    .keep = 'unused'
+  ) %>% 
+  filter(num >= 1141) 
+
+# df treino: até meio de 2020, sem viradas
+df_rateios_treino <- df_rateios %>% 
+  filter(
+    (year(data) == 2020 & month(data) <= 6) |
+      (year(data) <= 2019)
+  ) %>% 
+  filter(!(month(data) == 12 & day(data) == 31))
+
+# df teste
+df_rateios_teste <- df_rateios %>% 
+  filter(year(data) == 2020 & month(data) > 6) %>% 
+  filter(!(month(data) == 12 & day(data) == 31))
+
+# histograma quina: assimétrico, cauda longa à direita
+df_rateios_treino %>% 
+  ggplot(aes(r_quina)) +
+    geom_histogram(bins = 50)
+
+# scatterplot quina: horrível. Transformar (log)?
+df_rateios_treino %>% 
+  ggplot(aes(est_arrec, r_quina)) +
+    geom_point()
+
+# Não ajudou, não
+df_rateios_treino %>% 
+  ggplot(aes(log(est_arrec), r_quina)) +
+    geom_point()
+
+
+# Ganhadores quina ~ est_arrec --------------------------------------------
+
+# df completo
+df_ganh <- df_vetor %>% 
+  select(num, data, arrec, est_prox, starts_with(c('r_', 'g_'))) %>% 
+  mutate(
+    est_arrec = lag(est_prox),
+    .keep = 'unused'
+  ) %>% 
+  filter(num >= 1141) 
+
+# Vamos usar apenas estimativas até o limite
+# 3rd quartil + 1.5 IQR = 77.500.000
+limite <- quantile(df_ganh$est_arrec, .75) + 1.5 * IQR(df_ganh$est_arrec)
+
+df_ganh_treino <- df_ganh %>% 
+  filter(
+    (year(data) == 2020 & month(data) <= 6) |
+      (year(data) <= 2019)
+  ) %>% 
+  filter(!(month(data) == 12 & day(data) == 31)) %>% 
+  filter(est_arrec < limite)
+  
+df_ganh_teste <- df_ganh %>% 
+  filter(
+    (year(data) == 2020 & month(data) > 6)
+  ) %>% 
+  filter(!(month(data) == 12 & day(data) == 31)) %>% 
+  filter(est_arrec < limite)
+
+
+# Quadra
+df_ganh_treino %>% 
+  ggplot(aes(g_quadra)) +
+    geom_histogram(bins = 50)
+
+df_ganh_treino %>% 
+  ggplot(aes(est_arrec, g_quadra)) +
+    geom_point() +
+    geom_smooth(method = 'lm')
+
+# Quina
+df_ganh_treino %>% 
+  ggplot(aes(g_quina)) +
+    geom_histogram(bins = 50)
+
+df_ganh_treino %>% 
+  ggplot(aes(est_arrec, g_quina)) +
+    geom_point() +
+    geom_smooth(method = 'lm')
+
+
+
+# Histograma est_arrec ----------------------------------------------------
+
+df_ganh %>% 
+  ggplot(aes(est_arrec)) +
+    geom_histogram(bins = 50)
+
+df_ganh %>% 
+  filter(est_arrec < 2e6)
+
+
+# 3rd quartil + 1.5 IQR = 77.500.000
+quantile(df_ganh$est_arrec, .75) + 1.5 * IQR(df_ganh$est_arrec)
+
+df_ganh %>% 
+  filter(est_arrec < 5e7)
+
+# est_arrec e arrec são correlacionadas? ----------------------------------
+
+df <- df_vetor %>% 
+  filter(num >= 1141)
+
+df %>% 
+  ggplot(aes(num)) +
+    geom_line(aes(y = est_prox, color = 'est. prox.')) +
+    geom_line(aes(y = arrec, color = 'atual')) 
+
+# Menos do que eu pensava: 0,11
+cor(df$arrec, df$est_prox)
+
+
+
+
+
+
+
+
+
+
+
+
 # # Regressão (plan.R) ------------------------------------------------------
 # 
 # # Rateio de acordo com a arrecadação --------------------------------------
