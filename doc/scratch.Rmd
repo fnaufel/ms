@@ -1,5 +1,6 @@
 ---
 title: 'Estratégias para a Mega-sena'
+subtitle: 'scratch'
 author: 'fnaufel'
 email: 'https://fnaufel.github.io/'
 date: 'Versão de `r format(Sys.Date(), "%d/%m/%Y")`'
@@ -36,7 +37,7 @@ opts_chunk$set(
   # cache = TRUE,
   out.width = "70%",
   fig.align = 'center',
-  fig.width = 6,
+  fig.width = 8,
   fig.asp = 0.618,  # 1 / phi
   fig.show = "hold"
 )
@@ -160,75 +161,92 @@ $(
 )
 ```
 
-# Introdução
+# Probabilidades de acertos
 
-???
+A fórmula geral para 
 
-# Dicionário
+* $a$ acertos
+* $j$ números jogados
+* $s$ números sorteados dentre
+* $t$ números no total
 
-```{r echo=FALSE, message=FALSE}
-loadd(df_summary)
+é
+
+$$
+\Pr(a \mid j, s, t) = \frac{{j \choose a}{t - j \choose s - a}}{t \choose s}
+$$
+
+O total de resultados possíveis é $t \choose s$.
+
+A idéia é que, fixados os $j$ números jogados, para determinar a quantidade de resultados que têm exatamente $a$ acertos, é preciso
+
+* determinar os acertos dentre os jogados: $j \choose a$
+
+* determinar os números sorteados restantes (que não podem ter sido jogados): $t - j \choose s - a$
+
+Na verdade, o número de acertos segue a [distribuição hipergeométrica](https://pt.wikipedia.org/wiki/Distribui%C3%A7%C3%A3o_hipergeom%C3%A9trica).
+
+Para cada quantidade de números jogados, as chances de acertar são de $1$ em...
+
+```{r}
+chance <- function(
+  total = 60,
+  sorteados = 6,
+  jogados = 6
+) {
+  
+  acertos <- 6:4
+  
+  v <- choose(total, sorteados) / 
+    (choose(jogados, acertos) * 
+        choose(total - jogados, sorteados - acertos))
+  
+  names(v) <- c('sena', 'quina', 'quadra')
+  
+  v %>% round(0)
+  
+}
 ```
 
-`num`
+```{r}
+jogados <- 6:15
+chances <- map(jogados, ~chance(jogados = .x)) %>% 
+  bind_rows() %>% 
+  mutate(
+    jogados = jogados,
+    valor = c(
+      4.50, 
+      31.50, 
+      126.00, 
+      378.00, 
+      945.00, 
+      2079.00, 
+      4158.00, 
+      7722.00, 
+      13513.5, 
+      22522.5
+    ),
+    .before = 1
+  )
+```
 
-  : número do concurso
+```{r}
+chances
+```
 
-`data`
+As probabilidades são
 
-  : data do concurso
+```{r}
+probs <- 
+  chances %>% 
+    mutate(
+      sena = 1/sena,
+      quina = 1/quina,
+      quadra = 1/quadra
+    )
+```
 
-`d1 ... d5`
-
-  : dezenas sorteadas
-  
-`arrec`
-
-  : arrecadação total
-  
-`g_sena, g_quina, g_quadra`
-
-  : quantidades de ganhadores
-  
-`r_sena, r_quina, r_quadra`
-
-  : rateios para cada faixa, i.e., valor de cada prêmio *individual* na faixa
-  
-`acumulou`
-
-  : `true` se o prêmio da sena acumulou
-  
-`valor_ac`
-
-  : valor acumulado
-  
-`est_prox`
-
-  : estimativa do prêmio *total* da sena no próximo concurso
-  
-`ac_virada`
-
-  : valor acumulado até agora para a mega-sena da virada
-  
-
-# Estratégias que não funcionam
-
-## Dezenas mais raras
-
-## Dezenas mais frequentes
-
-## Dezenas pares, ímpares, em quadrantes, etc.
-
-
-# Estratégias que funcionam
-
-
-# Probabilidades
-
-
-
-# Estimando rateios
-
-
-# Lucro esperado
+```{r}
+probs
+```
 
