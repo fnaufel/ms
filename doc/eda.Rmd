@@ -15,8 +15,6 @@ output:
     toc: true
     toc_depth: 2
     number_sections: true
-    fig_width: 7
-    fig_height: 5
     fig_caption: true
     df_print: paged
     self_contained: true
@@ -35,10 +33,10 @@ opts_chunk$set(
   echo = TRUE, 
   # collapse = TRUE,
   # cache = TRUE,
-  out.width = "70%",
+  out.width = "75%",
   fig.align = 'center',
   fig.width = 6,
-  fig.asp = 0.618,  # 1 / phi
+  # fig.asp = 0.618,  # 1 / phi
   fig.show = "hold"
 )
 

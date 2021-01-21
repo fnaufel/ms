@@ -15,8 +15,6 @@ output:
     toc: true
     toc_depth: 2
     number_sections: true
-    fig_width: 7
-    fig_height: 5
     fig_caption: true
     df_print: paged
     self_contained: true
@@ -32,13 +30,12 @@ output:
 library(knitr)
 
 opts_chunk$set(
-  echo = FALSE, 
+  echo = TRUE,
   # collapse = TRUE,
   # cache = TRUE,
-  out.width = "70%",
+  out.width = "75%",
   fig.align = 'center',
-  fig.width = 8,
-  fig.asp = 0.618,  # 1 / phi
+  fig.width = 6,
   fig.show = "hold"
 )
 
@@ -46,11 +43,6 @@ options(dplyr.print_min = 6, dplyr.print_max = 6)
 
 # Supress crayon output
 options(crayon.enabled = FALSE)
-
-#library()
-
-# For nice tables
-# library(gt)
 
 # For nice dataframe summaries
 library(summarytools)
@@ -137,7 +129,7 @@ embed_yt <- function(code) {
   
 }
 
-library(drake)
+source('../packages.R')
 
 ```
 
@@ -186,67 +178,287 @@ A idéia é que, fixados os $j$ números jogados, para determinar a quantidade d
 
 Na verdade, o número de acertos segue a [distribuição hipergeométrica](https://pt.wikipedia.org/wiki/Distribui%C3%A7%C3%A3o_hipergeom%C3%A9trica).
 
-Para cada quantidade de números jogados, as chances de acertar são de $1$ em...
-
-```{r}
-chance <- function(
-  total = 60,
-  sorteados = 6,
-  jogados = 6
-) {
-  
-  acertos <- 6:4
-  
-  v <- choose(total, sorteados) / 
-    (choose(jogados, acertos) * 
-        choose(total - jogados, sorteados - acertos))
-  
-  names(v) <- c('sena', 'quina', 'quadra')
-  
-  v %>% round(0)
-  
-}
-```
-
 ```{r}
 jogados <- 6:15
-chances <- map(jogados, ~chance(jogados = .x)) %>% 
-  bind_rows() %>% 
-  mutate(
-    jogados = jogados,
-    valor = c(
-      4.50, 
-      31.50, 
-      126.00, 
-      378.00, 
-      945.00, 
-      2079.00, 
-      4158.00, 
-      7722.00, 
-      13513.5, 
-      22522.5
-    ),
-    .before = 1
-  )
+valor = c(
+  4.50, 
+  31.50, 
+  126.00, 
+  378.00, 
+  945.00, 
+  2079.00, 
+  4158.00, 
+  7722.00, 
+  13513.5, 
+  22522.5
+)
+
+sena <- dhyper(x = 6, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
+quina <- dhyper(x = 5, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
+quadra <- dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
+
+probs <- tibble(jogados, valor, sena, quina, quadra)
+
+sena <- (1/dhyper(x = 6, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+quina <- (1/dhyper(x = 5, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+quadra <- (1/dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+
+chances <- tibble(jogados, valor, sena, quina, quadra)
 ```
+
+As chances de acertar são de $1$ em...
 
 ```{r}
 chances
 ```
 
-As probabilidades são
-
-```{r}
-probs <- 
-  chances %>% 
-    mutate(
-      sena = 1/sena,
-      quina = 1/quina,
-      quadra = 1/quadra
-    )
-```
+As probabilidades de acertar são
 
 ```{r}
 probs
 ```
+
+
+# Estimar a arrecadação 
+
+```{r}
+loadd(df_vetor)
+```
+
+
+## Lag da estimativa da próxima arrecadação
+
+* A partir de `num` = $869$, `est_prox` está preenchida.
+* A partir de `num` = $1077$, `arrec` está preenchida.
+* Criar lag e comparação a partir de $2010$ (concurso $1141$).
+
+```{r}
+df_lag <- df_vetor %>% 
+  mutate(
+    est_arrec = lag(est_prox),
+    .keep = 'unused'
+  ) %>% 
+  filter(num >= 1141)
+```
+
+```{r}
+glimpse(df_lag)
+```
+
+## Gráficos
+
+A arrecadação é quase sempre maior que a estimativa.
+
+```{r out.width='100%'}
+n <- 200
+df_lag %>% 
+  slice_tail(n = n) %>% 
+  ggplot(aes(num)) +
+    geom_line(aes(y = arrec, color = 'arrecadação')) +
+    geom_line(aes(y = est_arrec, color = 'estimativa')) +
+    labs(
+      y = NULL,
+      color = NULL
+    ) +
+    theme(legend.position = 'top') +
+    scale_y_continuous(
+      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+    )
+```
+
+```{r}
+n <- 200
+df_lag %>% 
+  slice_tail(n = n) %>% 
+  filter(arrec < 300e6) %>% 
+  ggplot(aes(x = est_arrec, y = arrec)) +
+    geom_point() +
+    geom_smooth(method = 'lm', se = FALSE, formula = 'y ~ x') +
+    scale_x_continuous(
+      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+    ) +
+    scale_y_continuous(
+      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+    ) +
+    coord_fixed()
+```
+
+## Correlação
+
+Correlação entre `arrec` e `est_arrec` nos últimos $`r n`$ concursos, sem contar a virada:
+
+```{r}
+df <- df_lag %>% 
+  slice_tail(n = n) %>% 
+  filter(arrec < 300e6) 
+
+cor(df$arrec, df$est_arrec)
+```
+
+
+## Regressão usando todos os dados recentes
+
+```{r}
+library(tidymodels)
+```
+
+```{r}
+lm_fit1 <- linear_reg() %>% 
+  set_engine('lm') %>% 
+  fit(
+    arrec ~ est_arrec,
+    data = df
+  ) 
+```
+
+```{r}
+lm_fit1 %>% 
+  tidy() 
+```
+
+```{r}
+lm_fit1 %>% 
+  glance()
+```
+
+## Regressão com validação
+
+### Split
+
+```{r}
+set.seed(123)
+
+data_split <- initial_time_split(df, prop = 5/6)
+treino <- training(data_split)
+teste <- testing(data_split)
+```
+
+### Receita
+
+```{r}
+receita <-   df %>%
+    select(data, arrec, est_arrec) %>% 
+    recipe(arrec ~ .) %>% 
+    update_role(data, new_role = 'ID') 
+  
+```
+
+### Modelo
+
+```{r}
+lm_mod <- linear_reg() %>% 
+  set_engine('lm')
+```
+
+### Workflow
+
+```{r}
+wf <- workflows::workflow() %>% 
+  add_model(lm_mod) %>% 
+  add_recipe(receita)
+```
+
+### Treinar
+
+```{r}
+lm_fit <- wf %>% fit(data = treino)
+```
+
+### Resultados treino
+
+```{r}
+result_treino <- lm_fit %>% 
+  pull_workflow_fit()
+
+result_treino %>% tidy()
+result_treino %>% glance()
+```
+
+### Validar
+
+```{r}
+pred_col <- lm_fit %>% 
+  predict(new_data = teste) 
+
+interval_cols <- lm_fit %>% 
+  predict(new_data = teste, type = 'pred_int') 
+
+arrec_pred <- bind_cols(
+  pred_col,
+  interval_cols,
+  teste %>% select(arrec, est_arrec, data)
+)
+```
+
+```{r}
+arrec_pred %>% metrics(
+  truth = arrec,
+  estimate = .pred
+)
+```
+
+```{r}
+arrec_pred %>% 
+  ggplot(aes(x = data)) +
+    geom_line(aes(y = arrec, color = 'truth')) +
+    geom_line(aes(y = .pred, color = 'pred')) +
+    scale_y_continuous(
+      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' '),
+      limits = c(0, NA)
+    ) +
+    labs(
+      x = NULL,
+      y = NULL,
+      color = NULL
+    )
+```
+
+```{r}
+arrec_pred %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .5
+    ) +
+    geom_point(aes(y = arrec)) +
+    geom_line(aes(y = .pred), color = 'blue') +
+    labs(
+      x = 'estimativa',
+      y = 'real'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+    ) +
+    scale_y_continuous(
+      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+    )
+```
+
+
+### Coeficientes
+
+```{r}
+result_treino$fit %>% summary()
+```
+
+```{r}
+b0 <- lm_fit1$fit$coefficients[1] %>% round(0) %>% fm()
+b1 <- lm_fit1$fit$coefficients[2] %>% round(2) %>% fm()
+```
+
+::: {.rmdimportant}
+
+A regressão, usando o modelo treinado em todos os dados recentes, fica
+
+$$
+\text{arrec} = `r b0` + `r b1` \times \text{est_arrec}
+$$
+
+:::
+
+
+# Estimar ganhadores da quadra e da quina
+
+Como tenho a estimativa da arrecadação total e os percentuais destinados à quadra e à quina, vou poder estimar os rateios.
 
