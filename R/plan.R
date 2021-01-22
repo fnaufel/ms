@@ -31,24 +31,42 @@ the_plan <- drake_plan(
   # Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
   df_sucessos_raras = computar_acertos(df_vetor, dezenas_raras),
 
-  # Mais frquentes
+  # Mais frequentes
   n_freqs = 8,
   dezenas_freqs = escolher_dezenas(df_raras, n_dezenas = n_freqs, desc=TRUE),
   # Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
   df_sucessos_freqs = computar_acertos(df_vetor, dezenas_freqs),
 
 
+# Regressões --------------------------------------------------------------
+
+  # Número de concursos recentes para usar nas regressões
+  n_recentes = 200,
+
+  # df para usar nas regressões
+  df_regress = criar_df_regress(df_vetor, n_recentes),
+
+  # Separar em treino e teste
+  data_split = initial_time_split(df_regress, prop = 5/6),
+  df_treino = training(data_split),
+  df_teste = testing(data_split),
+
+
+  ## Regressão para estimar arrecadação -----------------------------------
+
+  arrec_resultados = regredir_arrec(df_regress, df_treino, df_teste),
+  # Calcular r^2 para as estimativas da CEF
+  rsq_CEF = computar_rsq_CEF(df_regress),
+
+
+  ## Regressão para estimar ganhadores da quina ---------------------------
   
+  
+  ## Regressão para estimar ganhadores da quadra --------------------------
+
+
 
 # Relatórios --------------------------------------------------------------
-
-  # Análise exploratória
-  eda = target(
-    command = {
-      rmarkdown::render(knitr_in("doc/eda.Rmd"))
-      file_out("doc/eda.html")
-    }
-  ),
 
   # Relatório final
   final = target(

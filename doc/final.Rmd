@@ -136,8 +136,7 @@ embed_yt <- function(code) {
   
 }
 
-library(drake)
-
+source('../packages.R')
 ```
 
 ```{js javascript-init, echo=FALSE}
@@ -225,9 +224,94 @@ loadd(df_summary)
 
 # Probabilidades
 
+# Estimativas
+
+## Corrigindo a estimativa de arrecadação da CEF
+
+```{r}
+loadd(arrec_resultados, n_recentes, rsq_CEF)
+
+previsoes <- arrec_resultados$validacao
+modelo <- arrec_resultados$modelo %>% pull_workflow_fit()
+
+b0 <- modelo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- modelo$fit$coefficients[2] %>% round(2) %>% fm()
+
+n_previsoes <- nrow(previsoes)
+rsq <- previsoes %>% 
+  metrics(truth = arrec, estimate = .pred) %>% 
+  filter(.metric == 'rsq') %>% 
+  pull(.estimate)
+```
+
+Após cada concurso, a CEF faz uma estimativa da arrecadação do concurso seguinte. Examinando os dados, vemos que essas estimativas costumam ficar abaixo dos valores reais.
+
+Usamos regressão linear para construir um modelo da arrecadação real em função da estimativa da CEF, com base nas informações dos $`r n_recentes`$ últimos concursos (excluindo os concursos da virada, que têm arrecadações atípicas).
+
+Este gráfico mostra as distâncias entre as arrecadações reais (os pontos) e as estimativas do nosso modelo (representadas pela reta azul). A área sombreada mostra um intervalo de confiança de $95\%$:
+
+```{r}
+previsoes %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .3
+    ) +
+    geom_line(aes(y = .pred), color = 'blue', size = 1) +
+    geom_line(aes(y = est_arrec), color = 'gray', size = 1) +
+    geom_point(aes(y = arrec)) +
+    labs(
+      title = 'Nosso modelo para a arrecadação (azul)',
+      subtitle = 'com base nas estimativas da CEF (cinza)',
+      x = 'Estimativa da CEF',
+      y = 'Arrecadação'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    ) +
+    scale_y_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+O gráfico mostra que as estimativas da CEF costumam ser mais baixas do que as arrecadações reais. Nosso modelo corrige esta tendência. 
+
+A conclusão do nosso modelo é que a arrecadação real e a estimativa da CEF estão relacionadas, *em média*, pela equação
+$$
+\text{arrecadação} = `r b0` + `r b1` \times \text{estimativa}
+$$
+com arrecadação e estimativa em milhões de reais.
+
+Nosso modelo (como qualquer outro) não é perfeito --- a reta não passa por todos os pontos --- mas ele dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação das arrecadações; i.e., $R^2 = `r rsq %>% round(3) %>% fm()`$. Em comparação, as estimativas da CEF tinham $R^2 = `r rsq_CEF %>% round(3) %>% fm()`$.
+
+Eis um gráfico comparando as estimativas mais recentes do nosso modelo com a arrecadação real e as estimativas da CEF:
+
+```{r}
+previsoes %>% 
+  ggplot(aes(x = data)) +
+    geom_line(aes(y = arrec, color = 'Arrecadação real'), size = 1) +
+    geom_line(aes(y = .pred, color = 'Nossa estimativa'), size = 1) +
+    geom_line(aes(y = est_arrec, color = 'Estimativa da CEF'), size = 1) +
+    scale_color_hue() +
+    scale_y_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' '),
+      limits = c(0, NA)
+    ) +
+    labs(
+      title = glue(
+        'Nossa estimativa para a arrecadação nos últimos {n_previsoes} concursos',
+      ),
+      subtitle = 'em comparação com a arrecadação real e a estimativa da CEF',
+      x = NULL,
+      y = NULL,
+      color = NULL
+    ) +
+    theme(legend.position = 'bottom')
+```
 
 
-# Estimando rateios
+## Estimando ganhadores
 
 
 # Lucro esperado

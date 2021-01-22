@@ -233,16 +233,20 @@ loadd(df_vetor)
 * Criar lag e comparação a partir de $2010$ (concurso $1141$).
 
 ```{r}
-df_lag <- df_vetor %>% 
+df_arrec <- df_vetor %>% 
   mutate(
     est_arrec = lag(est_prox),
     .keep = 'unused'
   ) %>% 
-  filter(num >= 1141)
+  filter(num >= 1141) %>% 
+  mutate(
+    arrec = (arrec / 1e6) %>% round(2),
+    est_arrec = (est_arrec / 1e6) %>% round(2)
+  )
 ```
 
 ```{r}
-glimpse(df_lag)
+glimpse(df_arrec)
 ```
 
 ## Gráficos
@@ -251,7 +255,7 @@ A arrecadação é quase sempre maior que a estimativa.
 
 ```{r out.width='100%'}
 n <- 200
-df_lag %>% 
+df_arrec %>% 
   slice_tail(n = n) %>% 
   ggplot(aes(num)) +
     geom_line(aes(y = arrec, color = 'arrecadação')) +
@@ -262,66 +266,42 @@ df_lag %>%
     ) +
     theme(legend.position = 'top') +
     scale_y_continuous(
-      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
     )
 ```
 
 ```{r}
 n <- 200
-df_lag %>% 
+df_arrec %>% 
   slice_tail(n = n) %>% 
-  filter(arrec < 300e6) %>% 
+  filter(arrec < 300) %>% 
   ggplot(aes(x = est_arrec, y = arrec)) +
     geom_point() +
     geom_smooth(method = 'lm', se = FALSE, formula = 'y ~ x') +
     scale_x_continuous(
-      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
     ) +
     scale_y_continuous(
-      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
     ) +
     coord_fixed()
 ```
 
-## Correlação
-
 Correlação entre `arrec` e `est_arrec` nos últimos $`r n`$ concursos, sem contar a virada:
 
 ```{r}
-df <- df_lag %>% 
+df <- df_arrec %>% 
   slice_tail(n = n) %>% 
-  filter(arrec < 300e6) 
+  filter(arrec < 300) 
 
 cor(df$arrec, df$est_arrec)
 ```
 
-
-## Regressão usando todos os dados recentes
+## Regressão com validação
 
 ```{r}
 library(tidymodels)
 ```
-
-```{r}
-lm_fit1 <- linear_reg() %>% 
-  set_engine('lm') %>% 
-  fit(
-    arrec ~ est_arrec,
-    data = df
-  ) 
-```
-
-```{r}
-lm_fit1 %>% 
-  tidy() 
-```
-
-```{r}
-lm_fit1 %>% 
-  glance()
-```
-
-## Regressão com validação
 
 ### Split
 
@@ -340,7 +320,6 @@ receita <-   df %>%
     select(data, arrec, est_arrec) %>% 
     recipe(arrec ~ .) %>% 
     update_role(data, new_role = 'ID') 
-  
 ```
 
 ### Modelo
@@ -403,7 +382,7 @@ arrec_pred %>%
     geom_line(aes(y = arrec, color = 'truth')) +
     geom_line(aes(y = .pred, color = 'pred')) +
     scale_y_continuous(
-      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' '),
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' '),
       limits = c(0, NA)
     ) +
     labs(
@@ -428,23 +407,33 @@ arrec_pred %>%
       y = 'real'
     ) +
     scale_x_continuous(
-      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
     ) +
     scale_y_continuous(
-      labels = scales::label_dollar(scale = 1e-6, suffix = 'M', big.mark = ' ')
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
     )
 ```
 
 
-### Coeficientes
+### Treinando o modelo com o df completo
 
 ```{r}
-result_treino$fit %>% summary()
+lm_fit_tudo <- wf %>% fit(data = df)
+```
+
+### Resultados do df completo
+
+```{r}
+result_tudo <- lm_fit_tudo %>% 
+  pull_workflow_fit()
+
+result_tudo %>% tidy()
+result_tudo %>% glance()
 ```
 
 ```{r}
-b0 <- lm_fit1$fit$coefficients[1] %>% round(0) %>% fm()
-b1 <- lm_fit1$fit$coefficients[2] %>% round(2) %>% fm()
+b0 <- result_tudo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- result_tudo$fit$coefficients[2] %>% round(2) %>% fm()
 ```
 
 ::: {.rmdimportant}
@@ -455,10 +444,307 @@ $$
 \text{arrec} = `r b0` + `r b1` \times \text{est_arrec}
 $$
 
+com arrec e est_arrec em milhões de reais.
+
 :::
 
 
 # Estimar ganhadores da quadra e da quina
 
 Como tenho a estimativa da arrecadação total e os percentuais destinados à quadra e à quina, vou poder estimar os rateios.
+
+## Quadra
+
+```{r}
+glimpse(df)
+```
+
+```{r}
+cor(df$est_arrec, df$g_quadra)
+```
+
+```{r}
+df %>% 
+  ggplot(aes(x = est_arrec, y = g_quadra)) +
+    geom_point() +
+    geom_smooth(method = 'lm', se = FALSE, formula = 'y ~ x') +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+
+### Receita
+
+```{r}
+receita <- df %>%
+    select(data, g_quadra, est_arrec) %>% 
+    recipe(g_quadra ~ .) %>% 
+    update_role(data, new_role = 'ID') 
+```
+
+### Modelo
+
+```{r}
+lm_mod <- linear_reg() %>% 
+  set_engine('lm')
+```
+
+### Workflow
+
+```{r}
+wf <- workflows::workflow() %>% 
+  add_model(lm_mod) %>% 
+  add_recipe(receita)
+```
+
+### Treinar
+
+```{r}
+lm_fit <- wf %>% fit(data = treino)
+```
+
+### Resultados treino
+
+```{r}
+result_treino <- lm_fit %>% 
+  pull_workflow_fit()
+
+result_treino %>% tidy()
+result_treino %>% glance()
+```
+
+### Validar
+
+```{r}
+pred_col <- lm_fit %>% 
+  predict(new_data = teste) 
+
+interval_cols <- lm_fit %>% 
+  predict(new_data = teste, type = 'pred_int') 
+
+quadra_pred <- bind_cols(
+  pred_col,
+  interval_cols,
+  teste %>% select(g_quadra, est_arrec, data)
+)
+```
+
+```{r}
+quadra_pred %>% metrics(
+  truth = g_quadra,
+  estimate = .pred
+)
+```
+
+```{r}
+quadra_pred %>% 
+  ggplot(aes(x = data)) +
+    geom_line(aes(y = g_quadra, color = 'truth')) +
+    geom_line(aes(y = .pred, color = 'pred')) +
+    labs(
+      x = NULL,
+      y = 'g_quadra',
+      color = NULL
+    )
+```
+
+```{r}
+quadra_pred %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .5
+    ) +
+    geom_point(aes(y = g_quadra)) +
+    geom_line(aes(y = .pred), color = 'blue') +
+    labs(
+      y = 'g_quadra'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+### Treinando o modelo com o df completo
+
+```{r}
+lm_fit_tudo <- wf %>% fit(data = df)
+```
+
+### Resultados do df completo
+
+```{r}
+result_tudo <- lm_fit_tudo %>% 
+  pull_workflow_fit()
+
+result_tudo %>% tidy()
+result_tudo %>% glance()
+```
+
+```{r}
+b0 <- result_tudo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- result_tudo$fit$coefficients[2] %>% round(2) %>% fm()
+```
+
+::: {.rmdimportant}
+
+A regressão, usando o modelo treinado em todos os dados recentes, fica
+
+$$
+\text{g_quadra} = `r b0` + `r b1` \times \text{est_arrec}
+$$
+
+com est_arrec em milhões de reais.
+
+:::
+
+
+## Quina
+
+```{r}
+glimpse(df)
+```
+
+```{r}
+cor(df$est_arrec, df$g_quina)
+```
+
+```{r}
+df %>% 
+  ggplot(aes(x = est_arrec, y = g_quina)) +
+    geom_point() +
+    geom_smooth(method = 'lm', se = FALSE, formula = 'y ~ x') +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+
+### Receita
+
+```{r}
+receita <- df %>%
+    select(data, g_quina, est_arrec) %>% 
+    recipe(g_quina ~ .) %>% 
+    update_role(data, new_role = 'ID') 
+```
+
+### Modelo
+
+```{r}
+lm_mod <- linear_reg() %>% 
+  set_engine('lm')
+```
+
+### Workflow
+
+```{r}
+wf <- workflows::workflow() %>% 
+  add_model(lm_mod) %>% 
+  add_recipe(receita)
+```
+
+### Treinar
+
+```{r}
+lm_fit <- wf %>% fit(data = treino)
+```
+
+### Resultados treino
+
+```{r}
+result_treino <- lm_fit %>% 
+  pull_workflow_fit()
+
+result_treino %>% tidy()
+result_treino %>% glance()
+```
+
+### Validar
+
+```{r}
+pred_col <- lm_fit %>% 
+  predict(new_data = teste) 
+
+interval_cols <- lm_fit %>% 
+  predict(new_data = teste, type = 'pred_int') 
+
+quina_pred <- bind_cols(
+  pred_col,
+  interval_cols,
+  teste %>% select(g_quina, est_arrec, data)
+)
+```
+
+```{r}
+quina_pred %>% metrics(
+  truth = g_quina,
+  estimate = .pred
+)
+```
+
+```{r}
+quina_pred %>% 
+  ggplot(aes(x = data)) +
+    geom_line(aes(y = g_quina, color = 'truth')) +
+    geom_line(aes(y = .pred, color = 'pred')) +
+    labs(
+      x = NULL,
+      y = 'g_quina',
+      color = NULL
+    )
+```
+
+```{r}
+quina_pred %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .5
+    ) +
+    geom_point(aes(y = g_quina)) +
+    geom_line(aes(y = .pred), color = 'blue') +
+    labs(
+      y = 'g_quina'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+### Treinando o modelo com o df completo
+
+```{r}
+lm_fit_tudo <- wf %>% fit(data = df)
+```
+
+### Resultados do df completo
+
+```{r}
+result_tudo <- lm_fit_tudo %>% 
+  pull_workflow_fit()
+
+result_tudo %>% tidy()
+result_tudo %>% glance()
+```
+
+```{r}
+b0 <- result_tudo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- result_tudo$fit$coefficients[2] %>% round(2) %>% fm()
+```
+
+::: {.rmdimportant}
+
+A regressão, usando o modelo treinado em todos os dados recentes, fica
+
+$$
+\text{g_quina} = `r b0` + `r b1` \times \text{est_arrec}
+$$
+
+com est_arrec em milhões de reais.
+
+:::
 
