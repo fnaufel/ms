@@ -29,11 +29,11 @@ ler_resultados <- function(nome) {
       num = as.numeric(concurso),
       data = lubridate::dmy(data_sorteio),
       d1 = as.numeric(x1_dezena),
-      d2 = as.numeric(x2ª_dezena),
-      d3 = as.numeric(x3ª_dezena),
-      d4 = as.numeric(x4ª_dezena),
-      d5 = as.numeric(x5ª_dezena),
-      d6 = as.numeric(x6ª_dezena),
+      d2 = as.numeric(x2a_dezena),
+      d3 = as.numeric(x3a_dezena),
+      d4 = as.numeric(x4a_dezena),
+      d5 = as.numeric(x5a_dezena),
+      d6 = as.numeric(x6a_dezena),
       arrec = valor(arrecadacao_total),
       g_sena = ganhadores_sena,
       r_sena = valor(rateio_sena),  
@@ -62,7 +62,7 @@ valor <- function(x) {
   
   x %>% 
     str_replace_all(
-      fixed('.'),
+      stringr::fixed('.'),
       ''
     ) %>% 
     str_replace(

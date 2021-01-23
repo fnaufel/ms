@@ -1,65 +1,6 @@
 
 * Idéias
 
-*** Probabilidades
-
-*** Regressão
-
-***** Regredir rateio ~ rateio anterior?
-
-******* R^2 baixo
-
-******* Nos testes, subestimou rateios reais
-
-******* Séries temporais ajudam, hein?
-
-******* Quadra
-
-Call:
-lm(formula = r_quadra ~ r_quadra_ant, data = df2_treino)
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--529,93 -162,32  -29,34  130,06  958,32 
-
-Coefficients:
-              Estimate Std. Error t value            Pr(>|t|)    
-(Intercept)  341,54543   17,54687   19,46 <0,0000000000000002 ***
-r_quadra_ant   0,43535    0,02689   16,19 <0,0000000000000002 ***
----
-Signif. codes:  0 ‘***’ 0,001 ‘**’ 0,01 ‘*’ 0,05 ‘.’ 0,1 ‘ ’ 1
-
-Residual standard error: 221,1 on 1122 degrees of freedom
-Multiple R-squared:  0,1894,	Adjusted R-squared:  0,1887 
-F-statistic: 262,2 on 1 and 1122 DF,  p-value: < 0,00000000000000022
-
-******* Quina
-
-Call:
-lm(formula = r_quina ~ r_quina_ant, data = df2_treino)
-
-Residuals:
-   Min     1Q Median     3Q    Max 
--32612 -12310  -3398   8490 143065 
-
-Coefficients:
-              Estimate Std. Error t value             Pr(>|t|)    
-(Intercept) 24805,8850  1061,5810  23,367 < 0,0000000000000002 ***
-r_quina_ant     0,2208     0,0291   7,588   0,0000000000000679 ***
----
-Signif. codes:  0 ‘***’ 0,001 ‘**’ 0,01 ‘*’ 0,05 ‘.’ 0,1 ‘ ’ 1
-
-Residual standard error: 17290 on 1122 degrees of freedom
-Multiple R-squared:  0,04882,	Adjusted R-squared:  0,04797 
-F-statistic: 57,58 on 1 and 1122 DF,  p-value: 0,00000000000006785
-
-***** Regredir n_ganhadores ~ est_arrec? NO
-
-      + Vamos usar só estimativas até 5e7 (50 milhões). A idéia é que,
-        se a estimativa for maior que isso, já vale a pena jogar.
-
-      + Horrível
-      
 * Refs
 
 *** https://www.statschat.org.nz/2012/09/05/lotto-and-abstract-theory/

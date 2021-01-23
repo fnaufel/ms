@@ -14,8 +14,6 @@ output:
     toc: true
     toc_depth: 2
     number_sections: true
-    fig_width: 7
-    fig_height: 5
     fig_caption: true
     df_print: paged
     self_contained: true
@@ -34,10 +32,9 @@ opts_chunk$set(
   echo = FALSE, 
   # collapse = TRUE,
   # cache = TRUE,
-  out.width = "70%",
+  out.width = "75%",
   fig.align = 'center',
   fig.width = 6,
-  fig.asp = 0.618,  # 1 / phi
   fig.show = "hold"
 )
 
@@ -163,6 +160,10 @@ $(
 
 ???
 
+Dados de http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_mgsasc.zip
+
+???
+
 # Dicionário
 
 ```{r echo=FALSE, message=FALSE}
@@ -277,11 +278,17 @@ previsoes %>%
 
 O gráfico mostra que as estimativas da CEF costumam ser mais baixas do que as arrecadações reais. Nosso modelo corrige esta tendência. 
 
-A conclusão do nosso modelo é que a arrecadação real e a estimativa da CEF estão relacionadas, *em média*, pela equação
+::: {.rmdimportant}
+
+### Conclusão {-}
+
+A arrecadação real e a estimativa da CEF estão relacionadas, *em média*, pela equação
 $$
 \text{arrecadação} = `r b0` + `r b1` \times \text{estimativa}
 $$
 com arrecadação e estimativa em milhões de reais.
+
+:::
 
 Nosso modelo (como qualquer outro) não é perfeito --- a reta não passa por todos os pontos --- mas ele dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação das arrecadações; i.e., $R^2 = `r rsq %>% round(3) %>% fm()`$. Em comparação, as estimativas da CEF tinham $R^2 = `r rsq_CEF %>% round(3) %>% fm()`$.
 
@@ -311,7 +318,118 @@ previsoes %>%
 ```
 
 
-## Estimando ganhadores
+## Estimando ganhadores da quina
+
+```{r}
+loadd(quina_resultados, n_recentes)
+
+previsoes <- quina_resultados$validacao
+modelo <- quina_resultados$modelo %>% pull_workflow_fit()
+
+b0 <- modelo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- modelo$fit$coefficients[2] %>% round(2) %>% fm()
+
+n_previsoes <- nrow(previsoes)
+rsq <- previsoes %>% 
+  metrics(truth = g_quina, estimate = .pred) %>% 
+  filter(.metric == 'rsq') %>% 
+  pull(.estimate)
+```
+
+É razoável que, quanto maior a arrecadação, maior a quantidade de jogadores e maior a quantidade de ganhadores da quina.
+
+O gráfico abaixo mostra um modelo linear para o número de ganhadores da quina com base na estimativa de arrecadação da CEF. O modelo dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação no número de ganhadores.
+
+```{r}
+previsoes %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .3
+    ) +
+    geom_line(aes(y = .pred), color = 'blue', size = 1) +
+    geom_point(aes(y = g_quina)) +
+    labs(
+      title = 'Nosso modelo para ganhadores da quina',
+      subtitle = 'com base nas estimativas da CEF',
+      x = 'Estimativa da CEF',
+      y = 'Ganhadores'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+::: {.rmdimportant}
+
+### Conclusão {-}
+
+O número de ganhadores da quina e a estimativa da CEF estão relacionadas, *em média*, pela equação
+$$
+\text{ganhadores da quina} = `r b0` + `r b1` \times \text{estimativa}
+$$
+com estimativa em milhões de reais.
+
+:::
+
+
+## Estimando ganhadores da quadra
+
+```{r}
+loadd(quadra_resultados, n_recentes)
+
+previsoes <- quadra_resultados$validacao
+modelo <- quadra_resultados$modelo %>% pull_workflow_fit()
+
+b0 <- modelo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- modelo$fit$coefficients[2] %>% round(2) %>% fm()
+
+n_previsoes <- nrow(previsoes)
+rsq <- previsoes %>% 
+  metrics(truth = g_quadra, estimate = .pred) %>% 
+  filter(.metric == 'rsq') %>% 
+  pull(.estimate)
+```
+
+O mesmo raciocínio se aplica ao número de ganhadores da quadra.
+
+O gráfico abaixo mostra um modelo linear para o número de ganhadores da quadra com base na estimativa de arrecadação da CEF. O modelo dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação no número de ganhadores.
+
+```{r}
+previsoes %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .3
+    ) +
+    geom_line(aes(y = .pred), color = 'blue', size = 1) +
+    geom_point(aes(y = g_quadra)) +
+    labs(
+      title = 'Nosso modelo para ganhadores da quadra',
+      subtitle = 'com base nas estimativas da CEF',
+      x = 'Estimativa da CEF',
+      y = 'Ganhadores'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    )
+```
+
+::: {.rmdimportant}
+
+### Conclusão {-}
+
+O número de ganhadores da quadra e a estimativa da CEF estão relacionadas, *em média*, pela equação
+$$
+\text{ganhadores da quadra} = `r b0` + `r b1` \times \text{estimativa}
+$$
+com estimativa em milhões de reais.
+
+:::
+
+
 
 
 # Lucro esperado

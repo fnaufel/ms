@@ -41,7 +41,9 @@ the_plan <- drake_plan(
 # Regressões --------------------------------------------------------------
 
   # Número de concursos recentes para usar nas regressões
-  n_recentes = 200,
+  # Um bom valor é 300. Mais que isto, a inflação atrapalha a estimativa
+  # da arrecadação
+  n_recentes = 300,
 
   # df para usar nas regressões
   df_regress = criar_df_regress(df_vetor, n_recentes),
@@ -60,10 +62,21 @@ the_plan <- drake_plan(
 
 
   ## Regressão para estimar ganhadores da quina ---------------------------
+  quina_resultados = regredir_quina(df_regress, df_treino, df_teste),
   
   
   ## Regressão para estimar ganhadores da quadra --------------------------
+  quadra_resultados = regredir_quadra(df_regress, df_treino, df_teste),
 
+
+# Previsões ---------------------------------------------------------------
+
+  # Função para calcular arrecadação, ganhadores e rateios e retornar df
+  previsao = funcao_previsao(
+    arrec_resultados, 
+    quina_resultados, 
+    quadra_resultados
+  ),
 
 
 # Relatórios --------------------------------------------------------------
