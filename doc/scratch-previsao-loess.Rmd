@@ -163,8 +163,8 @@ n_recentes = 300
 df_regress <- df_vetor %>% 
   # Criar lag da estimativa de arrecadação e mudar unidades
   mutate(
-    est_arrec = lag(est_prox),
-    # across(starts_with('r_'), ~ .x/1e3),   # rateios em milhares
+    est_arrec = lag(est_prox) / 1e6,       # arrecadação em milhões
+    across(starts_with('r_'), ~ .x/1e3),   # rateios em milhares
     .keep = 'unused'
   ) %>% 
   # A partir de `num` = 869, `est_prox` está preenchida
@@ -178,31 +178,128 @@ df_regress <- df_vetor %>%
   # Tomar apenas os `n_recentes` concursos
   slice_tail(n = n_recentes) %>% 
   # Escolher colunas
-  select(num, data, arrec, est_arrec, starts_with(c('r_', 'g_')), valor_ac)
+  select(num, data, est_arrec, starts_with(c('r_', 'g_')))
 
+```
+
+
+# r_quina ~ est_arrec: horrível
+
+## Scatterplot
+
+```{r}
+df_regress %>% 
+  ggplot() +
+    geom_point(aes(est_arrec, r_quina)) +
+    labs(
+      x = 'arrec (milhões)',
+      y = 'rateio\n(milhares)'
+    )
+```
+
+## Transformando: também horrível
+
+```{r}
+df_regress %>% 
+  ggplot(aes(log(est_arrec), r_quina)) +
+    geom_point() +
+    geom_smooth(method = 'lm', se = FALSE) +
+    labs(
+      x = 'log (arrec (milhões))',
+      y = 'rateio\n(milhares)'
+    )
+```
+
+
+# r_quina ~ est_arrec? Horrível
+
+```{r}
+df_regress %>% 
+  ggplot(aes(est_arrec, r_quina)) +
+    geom_point() +
+    geom_smooth(method = 'lm', se = FALSE) +
+    labs(
+      x = 'est. arrec. (milhões)',
+      y = 'rateio\n(milhares)'
+    )
+```
+
+# Tentar r_quina ~ g_quina? LOESS
+
+## Scatterplot
+
+```{r}
+df_regress %>% 
+  ggplot() +
+    geom_point(aes(g_quina, r_quina)) +
+    labs(
+      x = 'ganhadores',
+      y = 'rateio\n(milhares)'
+    )
+```
+
+## Usar LOESS
+
+### GGplot
+
+#### Rateio ~ sqrt(ganhadores)
+
+```{r}
+df_regress %>% 
+  ggplot(aes(sqrt(g_quina), r_quina)) +
+    geom_point() +
+    geom_smooth(se = FALSE) +
+    labs(
+      x = 'sqrt ganhadores',
+      y = 'rateio\n(milhares)'
+    )
+```
+
+```{r}
+df_regress %>% 
+  ggplot(aes(sqrt(g_quadra), r_quadra)) +
+    geom_point() +
+    geom_smooth(se = FALSE) +
+    labs(
+      x = 'sqrt ganhadores',
+      y = 'rateio\n(milhares)'
+    )
+```
+
+#### Rateio ~ est_arrec
+
+```{r}
+df_regress %>% 
+  ggplot(aes(log(est_arrec), r_quina)) +
+    geom_point() +
+    geom_smooth(se = FALSE)
+```
+
+# Do início
+
+## g_quina ~ est_arrec via lm()
+
+```{r}
+loadd(quina_resultados)
+
+modelo_quina <- quina_resultados$modelo %>% pull_workflow_fit()
+b0_g_quina <- modelo_quina$fit$coefficients[1]
+b1_g_quina <- modelo_quina$fit$coefficients[2]
+```
+
+```{r}
 # Separar em treino e teste
 data_split = initial_time_split(df_regress, prop = 5/6)
 df_treino = training(data_split)
 df_teste = testing(data_split)
 ```
 
-
-# g_quina ~ est_arrec via lm()
-
-```{r}
-modelo_quina <- lm(g_quina ~ est_arrec, data = df_treino)
-```
-
-```{r}
-summary(modelo_quina)
-```
-
-# r_quina ~ g_quina + est_arrec via loess()
+## r_quina ~ g_quina + est_arrec via lm()
 
 Treinar:
 
 ```{r}
-r_quina_fit <- loess(r_quina ~ g_quina + est_arrec, data = df_treino)
+r_quina_fit <- lm(r_quina ~ g_quina + est_arrec, data = df_treino)
 ```
 
 ```{r}
@@ -217,129 +314,123 @@ teste <- bind_cols(.r_quina = .r_quina, df_teste)
 teste %>% metrics(truth = r_quina, estimate = .r_quina)
 ```
 
-Treinar no df todo:
+
+
+
+
+
+## r_quina ~ g_quina + est_arrec via loess()
+
+
 
 ```{r}
-r_quina_fit <- loess(r_quina ~ g_quina + est_arrec, data = df_regress)
+rquina_fit <- loess(
+  # r_quina ~ I(sqrt(g_quina)), 
+  r_quina ~ g_quina, 
+  data = df_treino,
+  control = loess.control(surface = 'direct')
+)
 ```
 
 ```{r}
-r_quina_fit %>% summary()
+rquina_fit %>% summary()
 ```
 
-# Previsão
+```{r}
+col_pred <- rquina_fit %>% 
+  predict(newdata = df_teste)
+```
 
 ```{r}
-prever_r_quina <- function(num, est_arrec) {
+df_pred_quina <- bind_cols(
+  col_pred,
+  df_teste 
+) %>% 
+  rename(.pred = ...1)
+```
+
+```{r}
+df_pred_quina %>% 
+  metrics(truth = r_quina, estimate = .pred)
+```
+
+Não muito bom. $R^2 = .35$.
+
+Mas vamos treinar tudo:
+
+```{r}
+rquina_fit <- loess(
+  r_quina ~ g_quina, 
+  data = df_regress,
+  control = loess.control(surface = 'direct')
+)
+
+rquina_fit %>% summary()
+```
+
+```{r}
+col_pred <- rquina_fit %>% 
+  predict(newdata = df_regress)
+```
+
+```{r}
+df_pred_quina <- bind_cols(
+  col_pred,
+  df_regress
+) %>% 
+  rename(.pred = ...1)
+```
+
+```{r}
+df_pred_quina %>% 
+  metrics(truth = r_quina, estimate = .pred)
+```
+
+
+## Previsão do rateio da quina
+
+```{r}
+prev_r_quina <- function(num, est_arrec) {
   
-  g_quina <- predict(modelo_quina, tibble(est_arrec = est_arrec))
-  r_quina <- predict(
-    r_quina_fit, 
-    tibble(
-      est_arrec = est_arrec,
-      g_quina = g_quina
-    )
+  g_quina <- (b0_g_quina + b1_g_quina * est_arrec) %>% round(0)
+  
+  df_temp <- tibble(
+    g_quina = g_quina
   )
+  
+  r_quina <- rquina_fit %>% predict(newdata = df_temp)
   
   tibble(
     num = num,
-    .g_quina = g_quina,
-    .r_quina = r_quina
+    .estimativaCEF = est_arrec,
+    .g_quina       = g_quina,
+    .r_quina  = r_quina %>% round(2),
   )
   
 }
 ```
 
+
 ```{r}
-teste_quina <- 
-  map2_dfr(
-    df_regress$num,
-    df_regress$est_arrec,
-    prever_r_quina
-  ) %>% 
+pred_quina <- map2_dfr(
+  df_regress$num, 
+  df_regress$est_arrec, 
+  prev_r_quina
+)
+```
+
+```{r}
+pred_quina <- pred_quina %>% 
   left_join(df_regress)
 ```
 
 ```{r}
-teste_quina %>% 
-  slice_tail(n = 200) %>% 
-  metrics(truth = r_quina, estimate = .r_quina)
+pred_quina %>% 
+  metrics(truth = .g_quina, estimate = g_quina)
 ```
 
 ```{r}
-teste_quina %>% 
-  slice_tail(n = 100) %>% 
-  ggplot(aes(num)) +
-    geom_line(aes(y = r_quina, color = 'truth')) +
-    geom_line(aes(y = .r_quina, color = 'est')) 
+pred_quina %>% 
+  metrics(truth = .r_quina, estimate = r_quina)
 ```
-
-# Usando previsão de arrec
-
-```{r}
-df_fracao <- df_regress %>% 
-  mutate(
-    fracao_quina = (r_quina * g_quina) / arrec,
-    fracao_quina_est = (r_quina * g_quina) / est_arrec
-  )
-```
-
-```{r}
-df_fracao %>% 
-  ggplot(aes(fracao_quina)) +
-    geom_histogram()
-```
-
-Total da quina é $0,058$ da arrecadação real.
-
-```{r}
-df_fracao %>% 
-  ggplot(aes(fracao_quina_est)) +
-    geom_histogram(bins = 10)
-```
-
-```{r}
-df_fracao %>% 
-  pull(fracao_quina_est) %>% 
-  cut(breaks = seq(0, 1, .1), right = FALSE) %>% 
-  table()
-```
-
-Para a est_arrec, tudo espalhado.
-
-Vamos ver com o modelo arrec ~ est_arrec:
-
-```{r}
-df_fracao <- df_fracao %>% 
-  mutate(
-    arrec_modelo = 16.37 * 1e6 + 1.04 * est_arrec,
-    fracao_quina_modelo = (r_quina * g_quina) / arrec_modelo,
-  )
-```
-
-```{r}
-df_fracao %>% 
-  ggplot(aes(fracao_quina_modelo)) +
-    geom_histogram(bins = 20)
-```
-
-É, nada feito.
-
-# Usando valor acumulado
-
-```{r}
-df_regress %>% 
-  ggplot(aes(num, valor_ac)) +
-    geom_line()
-```
-
-```{r}
-arrec_fit <- lm(arrec ~ est_arrec + valor_ac, data = df_treino)
-```
-
-```{r}
-summary(arrec_fit)
-```
-
-Não.
 

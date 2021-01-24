@@ -430,7 +430,10 @@ com estimativa em milhões de reais.
 :::
 
 
+# Estimando rateios 
+
+Modelos dos rateios em função da arrecadação estimada (mesmo depois de corrigida pelo nosso modelo) têm incerteza grande demais.
 
 
-# Lucro esperado
+# Previsões
 

@@ -12,8 +12,8 @@
 funcao_previsao <- function(arrec_resultados, quina_resultados,
                             quadra_resultados) {
 
-  prop_quina <- .0577
-  prop_quadra <- .0824
+  prop_quina <- 6e4
+  prop_quadra <- 8e4
   
   modelo_arrec <- arrec_resultados$modelo %>% pull_workflow_fit()
   b0_arrec <- modelo_arrec$fit$coefficients[1]
@@ -29,20 +29,18 @@ funcao_previsao <- function(arrec_resultados, quina_resultados,
   
   f <- function(num, est_arrec) {
     
-    est_arrec_1e6 <- est_arrec / 1e6
-    
     tibble(
       num           = num,
       .estimativaCEF = est_arrec,
-      .arrec         = (b0_arrec + b1_arrec * est_arrec_1e6) * 1e6,
+      .arrec         = b0_arrec + b1_arrec * est_arrec,
       
-      .g_quina       = (b0_quina + b1_quina * est_arrec_1e6) %>% round(0),
+      .g_quina       = (b0_quina + b1_quina * est_arrec) %>% round(0),
       .total_quina   = .arrec * prop_quina,
-      .rateio_quina  = (.total_quina / .g_quina) %>% round(2),
+      .r_quina       = (.total_quina / .g_quina) %>% round(2),
       
-      .g_quadra      = (b0_quadra + b1_quadra * est_arrec_1e6) %>% round(0),
+      .g_quadra      = (b0_quadra + b1_quadra * est_arrec) %>% round(0),
       .total_quadra  = .arrec * prop_quadra,
-      .rateio_quadra = (.total_quadra / .g_quadra) %>% round(2)
+      .r_quadra      = (.total_quadra / .g_quadra) %>% round(2)
     )
     
   }

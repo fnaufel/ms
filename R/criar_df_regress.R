@@ -17,10 +17,10 @@ criar_df_regress <- function(df_vetor, n_recentes) {
     # A partir de `num` = 1077, `arrec` está preenchida
     # Usar concursos a partir do ano de 2010 (concurso 1141).
     filter(num >= 1141) %>% 
-    # Mudar unidade das quantias para milhões de reais
+    # Mudar unidade das arrecadações para milhões de reais
     mutate(
-      arrec = (arrec / 1e6) %>% round(2),
-      est_arrec = (est_arrec / 1e6) %>% round(2)
+      arrec = (arrec / 1e6) %>% round(3),
+      est_arrec = (est_arrec / 1e6) %>% round(3)
     ) %>% 
     # Retirar os concursos da virada, que têm valores atípicos
     filter(
@@ -29,6 +29,6 @@ criar_df_regress <- function(df_vetor, n_recentes) {
     # Tomar apenas os `n_recentes` concursos
     slice_tail(n = n_recentes) %>% 
     # Escolher colunas
-    select(num, data, arrec, est_arrec, starts_with('g_'))
+    select(num, data, arrec, est_arrec, starts_with(c('g_', 'r_')))
 
 }
