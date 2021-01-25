@@ -263,8 +263,11 @@ previsoes %>%
     geom_line(aes(y = est_arrec), color = 'gray', size = 1) +
     geom_point(aes(y = arrec)) +
     labs(
-      title = 'Nosso modelo para a arrecadação (azul)',
-      subtitle = 'com base nas estimativas da CEF (cinza)',
+      title = glue(
+        'Nosso modelo para a arrecadação (azul)',
+        '\nnos últimos {n_recentes} concursos'
+      ),
+      subtitle = 'com base nas estimativas da CEF (cinza)', 
       x = 'Estimativa da CEF',
       y = 'Arrecadação'
     ) +
@@ -351,7 +354,10 @@ previsoes %>%
     geom_line(aes(y = .pred), color = 'blue', size = 1) +
     geom_point(aes(y = g_quina)) +
     labs(
-      title = 'Nosso modelo para ganhadores da quina',
+      title = glue(
+        'Nosso modelo para ganhadores da quina',
+        '\nnos últimos {n_previsoes} concursos'
+      ),
       subtitle = 'com base nas estimativas da CEF',
       x = 'Estimativa da CEF',
       y = 'Ganhadores'
@@ -407,7 +413,10 @@ previsoes %>%
     geom_line(aes(y = .pred), color = 'blue', size = 1) +
     geom_point(aes(y = g_quadra)) +
     labs(
-      title = 'Nosso modelo para ganhadores da quadra',
+      title = glue(
+        'Nosso modelo para ganhadores da quadra',
+        '\nnos últimos {n_previsoes} concursos'
+      ),
       subtitle = 'com base nas estimativas da CEF',
       x = 'Estimativa da CEF',
       y = 'Ganhadores'
@@ -432,8 +441,90 @@ com estimativa em milhões de reais.
 
 # Estimando rateios 
 
-Modelos dos rateios em função da arrecadação estimada (mesmo depois de corrigida pelo nosso modelo) têm incerteza grande demais.
+```{r}
+loadd(df_regress, df_vetor)
+```
 
+## Sena
+
+```{r}
+df_vetor %>% 
+  count(g_sena)
+```
+
+```{r}
+df_regress %>% 
+  ggplot(aes(x = est_arrec, y = r_sena)) +
+    geom_point(alpha = .5) +
+    scale_x_continuous(labels = scales::dollar_format(suffix = 'M')) +
+    scale_y_continuous(
+      labels = scales::dollar_format(
+        big.mark = '.', 
+        decimal.mark = ',',
+        scale = 1e-6,
+        suffix = 'M'
+      )
+    ) +
+    geom_smooth(method = 'lm', se = FALSE, formula = y ~ x) +
+    labs(
+      title = glue(
+        'Valor do prêmio individual da sena',
+        '\nnos últimos {n_recentes} concursos'
+      ),
+
+      subtitle = 'em função da arrecadação estimada',
+      y = 'prêmio\nindividual',
+      x = 'arrecadação estimada'
+    )
+```
+
+## Quina e quadra
+
+Para prever os valores dos prêmios individuais da quadra e da quina, o ideal seria achar um modelo dos rateios em função da arrecadação estimada.
+
+Uma idéia razoável é que, quanto maior a arrecadação total, maior o número de ganhadores e, daí, menor o valor do rateio.
+
+Mas, quando vemos os gráficos, percebemos que isto não é verdade.
+
+Para a quina:
+
+```{r}
+df_regress %>% 
+  ggplot(aes(x = est_arrec, y = r_quina)) +
+    geom_point(alpha = .5) +
+    scale_x_continuous(labels = scales::dollar_format(suffix = 'M')) +
+    scale_y_continuous(
+      labels = scales::dollar_format(big.mark = '.', decimal.mark = ',')
+    ) +
+    geom_smooth(method = 'lm', se = FALSE, formula = y ~ x) +
+    labs(
+      title = 'Valor do prêmio individual da quina',
+      subtitle = 'em função da arrecadação estimada',
+      y = 'prêmio\nindividual',
+      x = 'arrecadação estimada'
+    )
+```
+
+A reta mostra que, em média, o valor do rateio da quina praticamente *não muda* em função da arrecadação estimada.
+
+Algo parecido acontece com o valor do prêmio individual da quadra:
+
+```{r}
+df_regress %>% 
+  ggplot(aes(x = est_arrec, y = r_quadra)) +
+    geom_point(alpha = .5) +
+    scale_x_continuous(labels = scales::dollar_format(suffix = 'M')) +
+    scale_y_continuous(
+      labels = scales::dollar_format(big.mark = '.', decimal.mark = ',')
+    ) +
+    geom_smooth(method = 'lm', se = FALSE, formula = y ~ x) +
+    labs(
+      title = 'Valor do prêmio individual da quadra',
+      subtitle = 'em função da arrecadação estimada',
+      y = 'prêmio\nindividual',
+      x = 'arrecadação estimada'
+    )
+```
 
 # Previsões
 

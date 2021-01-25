@@ -1,0 +1,364 @@
+---
+title: 'Logit'
+subtitle: 'scratch'
+author: 'fnaufel'
+email: 'https://fnaufel.github.io/'
+date: 'Versão de `r format(Sys.Date(), "%d/%m/%Y")`'
+lang: 'pt'
+# TODO: include LaTeX fields
+output: 
+  html_document:
+    theme: readable
+           # https://bootswatch.com/3/readable/
+    highlight: tango
+    css: styles.css
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    fig_caption: true
+    df_print: paged
+    self_contained: true
+    # code_folding: show
+    # keep_md: true
+    # includes:
+    #   in_header: header.html
+    #   before_body: doc_prefix.html
+    #   after_body: doc_suffix.html
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+
+opts_chunk$set(
+  echo = TRUE,
+  # collapse = TRUE,
+  # cache = TRUE,
+  out.width = "75%",
+  fig.align = 'center',
+  # fig.width = 6,
+  fig.show = "hold"
+)
+
+options(dplyr.print_min = 6, dplyr.print_max = 6)
+
+# Supress crayon output
+options(crayon.enabled = FALSE)
+
+# For nice dataframe summaries
+library(summarytools)
+st_options(
+  plain.ascii = FALSE,
+  dfSummary.varnumbers = FALSE,
+  dfSummary.style = 'grid',
+  dfSummary.graph.magnif = .75
+)
+
+# Tidy!
+library(tidyverse)
+
+# Sober theme for ggplot
+theme_set(
+  theme_linedraw() +                         # Set simple theme for ggplot
+    theme(                                   # with some tweaks
+      axis.title.y.left = element_text(
+         angle = 0,                          # Never rotate y axis title
+         margin = margin(r = 20),            # Separate y axis title a little 
+         vjust = .5                          # Leave y axis title in the middle
+      ),
+      axis.title.x.bottom = element_text(
+         margin = margin(t = 20)             # Separate x axis title a little 
+      ),
+      axis.line = element_blank(),           # No axis lines
+      panel.border = element_blank(),        # No frame
+      panel.grid.minor = element_blank()     # No grid minor lines
+    )
+)
+
+# Avoid scientific notation and use a comma as decimal separator
+options(
+  scipen = 15,
+  OutDec = ','
+)
+
+# Format a number with thousand separators (default point)
+# and decimal comma enclosed in curly braces for LaTeX printing.
+# CAREFUL: if called outside math mode, will print the braces!
+fm <- function(x, big = '.', decimal = '{,}') {
+  if (!is.numeric(x)) {
+    x
+  } else {
+    prettyNum(x, big.mark = big, decimal.mark = decimal)
+  }
+
+}
+
+# To center the results of a chunk (image, video etc.)
+# Usage: 
+#         out.extra=center()
+#         
+center <- function(){
+  
+  if (is_html_output()) {
+    'class="center"'
+  }
+  
+}
+
+
+# To embed YT videos in HTML and the link (centered) in LaTeX
+embed_yt <- function(code) {
+
+  if (is_html_output()) {
+    include_url(
+      paste0(
+        'https://www.youtube.com/embed/',
+        code
+      )
+    )
+  } else {
+    cat(
+      paste0(
+        '```{=latex}\n',
+        '\\begin{center} \\url{https://youtu.be/',
+        code,
+        '} \\end{center}\n',
+        '```'
+      )
+    )
+  }
+  
+}
+
+source('../packages.R')
+
+```
+
+```{js javascript-init, echo=FALSE}
+
+// Make off-site links open in a new window/tab
+function changeTargets() {
+  $("a").attr(
+    "target", function() {
+      // Load local links locally
+      if (this.host == location.host) return "_self"
+      // Load off-site links in a new window
+      else return "_blank";
+    }
+  );
+}
+
+// Execute when document is ready
+$(
+  changeTargets
+)
+```
+
+# Idéia
+
+https://towardsdatascience.com/implementing-and-interpreting-ordinal-logistic-regression-1ee699274cf5
+
+Dividir rateio da quina em faixas. 
+
+# Dados
+
+```{r}
+loadd(df_regress, n_recentes)
+```
+
+
+# Examinar faixa de rateios da quina
+
+```{r}
+r_quina <- df_regress %>% 
+  pull(r_quina)
+```
+
+```{r}
+summary(r_quina)
+```
+
+```{r}
+(amplitude_quina <- range(r_quina)[2] - range(r_quina)[1])
+```
+
+# Escolher número de faixas
+
+## 3 faixas
+
+```{r}
+n_faixas <- 3
+largura <- amplitude_quina / n_faixas
+largura
+```
+
+Vamos escolher a largura manualmente, com base no valor acima:
+
+```{r}
+largura <- 60000
+maximo_break <- n_faixas * largura
+if (maximo_break < max(r_quina)) {
+  breaks <- c(seq(0, maximo_break, largura), Inf)
+} else {
+  breaks <- seq(0, maximo_break, largura)
+}
+breaks
+```
+
+```{r}
+df_nomes <- tibble(
+  de = breaks, 
+  ate = lead(breaks, default = Inf)
+)
+
+nomes <- df_nomes %>% 
+  glue_data(
+    '{de} a {ate}'
+  )
+
+nomes <- nomes[-length(nomes)]
+nomes
+```
+
+```{r}
+faixas <- df_regress %>% 
+  pull(r_quina) %>% 
+  cut(
+    breaks = breaks, 
+    right = FALSE, 
+    include.lowest = TRUE, 
+    labels = nomes,
+    ordered_result = TRUE
+  ) %>% 
+  table()
+faixas
+```
+
+
+Modificar df
+
+```{r}
+df_regress <- df_regress %>% 
+  mutate(
+    faixa_quina = cut(
+      r_quina,
+      breaks = breaks, 
+      right = FALSE, 
+      include.lowest = TRUE, 
+      labels = nomes,
+      ordered_result = TRUE
+    )
+  )
+```
+
+```{r}
+df_regress %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_histogram() +
+    facet_wrap(~ faixa_quina) +
+    scale_x_continuous(labels = scales::dollar_format(suffix = 'M'))
+```
+
+Um problema aqui: no terceiro plot, rateio acima de 120 mil com est_arrec de zero??
+
+```{r}
+df_regress %>% 
+  filter(r_quina >= 120000)
+```
+
+Realmente, as estimativas da CEF são uma droga. Uma ordem de magnitude abaixo da arrecadação real, nestes casos.
+
+Melhor trabalhar com $2$ faixas, só.
+
+## 2 faixas
+
+```{r}
+n_faixas <- 2
+largura <- amplitude_quina / n_faixas
+largura
+```
+
+Vamos escolher a largura manualmente, com base no valor acima:
+
+```{r}
+largura <- 40000
+breaks <- c(0, largura, Inf)
+breaks
+```
+
+```{r}
+df_nomes <- tibble(
+  de = breaks, 
+  ate = lead(breaks, default = Inf)
+)
+
+nomes <- df_nomes %>% 
+  glue_data(
+    '{de} a {ate}'
+  )
+
+nomes <- nomes[-length(nomes)]
+nomes
+```
+
+```{r}
+faixas <- df_regress %>% 
+  pull(r_quina) %>% 
+  cut(
+    breaks = breaks, 
+    right = FALSE, 
+    include.lowest = TRUE, 
+    labels = nomes,
+    ordered_result = TRUE
+  ) %>% 
+  table()
+faixas
+```
+
+
+Modificar df
+
+```{r}
+df_faixas <- df_regress %>% 
+  mutate(
+    faixa_quina = cut(
+      r_quina,
+      breaks = breaks, 
+      right = FALSE, 
+      include.lowest = TRUE, 
+      labels = nomes,
+      ordered_result = TRUE
+    )
+  )
+```
+
+```{r}
+df_faixas %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_histogram(bins = 50) +
+    facet_wrap(~ faixa_quina) +
+    scale_x_continuous(labels = scales::dollar_format(suffix = 'M'))
+```
+
+```{r}
+# Separar em treino e teste
+data_split = initial_time_split(df_faixas, prop = 5/6)
+df_treino = training(data_split)
+df_teste = testing(data_split)
+```
+
+```{r}
+modelo <- glm(
+  faixa_quina ~ est_arrec,
+  data = df_treino,
+  family = 'binomial'
+)
+```
+
+```{r}
+summary(modelo)
+```
+
+No way.
+
+Esquece mesmo.
+
