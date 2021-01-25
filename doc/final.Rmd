@@ -46,7 +46,7 @@ options(crayon.enabled = FALSE)
 #library()
 
 # For nice tables
-# library(gt)
+library(gt)
 
 # For nice dataframe summaries
 library(summarytools)
@@ -134,6 +134,24 @@ embed_yt <- function(code) {
 }
 
 source('../packages.R')
+
+loadd(
+  df,
+  df_sucessos_raras, 
+  n_raras,
+  df_sucessos_freqs,
+  df_vetor,
+  df_summary,
+  df_regress,
+  arrec_resultados, 
+  n_recentes, 
+  rsq_CEF,
+  quadra_resultados,
+  quina_resultados,
+  sena_resultados,
+  premios
+)
+
 ```
 
 ```{js javascript-init, echo=FALSE}
@@ -160,15 +178,13 @@ $(
 
 ???
 
+http://loterias.caixa.gov.br/wps/portal/loterias/landing/megasena
+
 Dados de http://www1.caixa.gov.br/loterias/_arquivos/loterias/D_mgsasc.zip
 
 ???
 
-# Dicionário
-
-```{r echo=FALSE, message=FALSE}
-loadd(df_summary)
-```
+# Dicionário de dados 
 
 `num`
 
@@ -211,27 +227,238 @@ loadd(df_summary)
   : valor acumulado até agora para a mega-sena da virada
   
 
+# Estatísticas
+
+```{r}
+df_summary %>% print(method = 'render')
+```
+
+
 # Estratégias que não funcionam
 
-## Dezenas mais raras
+## Frequências
 
-## Dezenas mais frequentes
+::: {.rmdwarning}
+
+Cada sorteio é independente, e a [Lei dos Grandes Números](https://pt.wikipedia.org/wiki/Lei_dos_grandes_n%C3%BAmeros) só fala sobre o comportamento dos resultados *quando o número de sorteios tende ao infinito*. Até agora, houve $`r df %>% nrow() %>% fm()`$ sorteios, uma quantidade infinitamente menor do que infinitos sorteios. 😜
+
+:::
+
+```{r}
+dezenas <- tibble(
+  dezena = c(
+    df %>% pull(d1),
+    df %>% pull(d2),
+    df %>% pull(d3),
+    df %>% pull(d4),
+    df %>% pull(d5),
+    df %>% pull(d6)
+  )
+)
+```
+
+
+```{r}
+nsorteios <- nrow(df)
+media <- nsorteios / 10
+
+dezenas %>% 
+  ggplot(aes(dezena)) + 
+    geom_histogram(binwidth = 1, fill = 'light gray', color = 'black') +
+    geom_hline(aes(yintercept = media), color = 'red') +
+    labs(
+      y = NULL,
+      title = paste0(
+        'Frequência de cada dezena após ',
+        nsorteios,
+        ' sorteios'
+      ),
+      subtitle = 'frequência teórica (uniforme) em vermelho'
+    ) +
+    scale_x_continuous(breaks = c(1, c(seq(0, 60, 5))[-1]))
+```
+
+Um erro comum é achar que as dezenas que foram menos sorteadas em concursos anteriores têm probabilidade maior de sair no próximo concurso.
+
+```{r}
+n_concursos <- nrow(df_sucessos_raras)
+```
+
+Em uma simulação, jogamos, em cada concurso, as $`r n_raras`$ dezenas que tinham a menor frequência acumulada em todos os concursos anteriores. As quantidades de acertos em $`r n_concursos %>% fm()`$ concursos foram:
+
+```{r echo=FALSE}
+df_sucessos_raras %>% 
+  count(n_acertos) %>% 
+  mutate(
+    n = n %>% fm()
+  ) %>% 
+  rename(
+    Acertos = n_acertos,
+    Concursos = n
+  ) %>% 
+  gt() %>% 
+    cols_align('right')
+```
+
+Outras pessoas dizem que as dezenas mais frequentes são as mais "quentes", e têm maior probabilidade de sair. Em outra simulação, jogamos, em cada concurso, as $`r n_raras`$ dezenas que tinham a *maior* frequência acumulada em todos os concursos anteriores. As quantidades de acertos em $`r n_concursos %>% fm()`$ concursos foram:
+
+```{r echo=FALSE}
+df_sucessos_freqs %>% 
+  count(n_acertos) %>% 
+  mutate(
+    n = n %>% fm()
+  ) %>% 
+  rename(
+    Acertos = n_acertos,
+    Concursos = n
+  ) %>% 
+  gt() %>% 
+    cols_align('right')
+```
+
+
+```{r echo=FALSE}
+source('../R/computar_acertos.R')
+
+# Jogar as mesmas 6 dezenas (escolhidas ao acaso) em todos os jogos
+mesmas_dezenas <- tibble(
+  num = 1:nrow(df_vetor),
+  dezenas = list(sample(1:60, n_raras))
+)
+```
+
+Para comparar, eis os números de acertos se jogarmos as mesmas $`r n_raras`$ dezenas ($`r sort(mesmas_dezenas$dezenas[[1]])`$) em todos os concursos:
+
+```{r echo=FALSE}
+# Quantidade de acertos em cada concurso, jogando as dezenas escolhidas acima
+df_sucessos_mesmas <- computar_acertos(df_vetor, mesmas_dezenas)
+
+df_sucessos_mesmas %>% 
+  count(n_acertos) %>% 
+  mutate(
+    n = n %>% fm()
+  ) %>% 
+  rename(
+    Acertos = n_acertos,
+    Concursos = n
+  ) %>% 
+  gt() %>% 
+    cols_align('right')
+```
+
+Quaisquer diferenças entre as $3$ situações são pequenas, devidas somente ao acaso.
 
 ## Dezenas pares, ímpares, em quadrantes, etc.
 
-
-# Estratégias que funcionam
-
+???
 
 # Probabilidades
+
+A fórmula geral para 
+
+* $a$ acertos
+* $j$ números jogados
+* $s$ números sorteados dentre
+* $t$ números no total
+
+é
+
+$$
+\Pr(a \mid j, s, t) = \frac{{j \choose a}{t - j \choose s - a}}{t \choose s}
+$$
+
+O total de resultados possíveis é $t \choose s$.
+
+A idéia é que, fixados os $j$ números jogados, para determinar a quantidade de resultados que têm exatamente $a$ acertos, é preciso
+
+* determinar os acertos dentre os jogados: $j \choose a$
+
+* determinar os números sorteados restantes (que não podem ter sido jogados): $t - j \choose s - a$
+
+Na verdade, o número de acertos segue a [distribuição hipergeométrica](https://pt.wikipedia.org/wiki/Distribui%C3%A7%C3%A3o_hipergeom%C3%A9trica).
+
+```{r}
+jogados <- 6:15
+valor = c(
+  4.50, 
+  31.50, 
+  126.00, 
+  378.00, 
+  945.00, 
+  2079.00, 
+  4158.00, 
+  7722.00, 
+  13513.5, 
+  22522.5
+)
+
+sena <- dhyper(x = 6, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
+quina <- dhyper(x = 5, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
+quadra <- dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
+
+probs <- tibble(jogados, valor, sena, quina, quadra)
+
+sena <- (1/dhyper(x = 6, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+quina <- (1/dhyper(x = 5, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+quadra <- (1/dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+
+chances <- tibble(jogados, valor, sena, quina, quadra)
+```
+
+As chances de acertar são de $1$ em...
+
+```{r}
+chances %>% 
+  gt() %>% 
+    cols_align('right') %>% 
+    fmt_number(
+      c(1, 3, 4, 5), 
+      dec_mark = ',',
+      sep_mark = '.',
+      decimals = 0
+    ) %>% 
+    fmt_number(
+      2, 
+      dec_mark = ',',
+      sep_mark = '.'
+    ) 
+```
+
+Dito de outro modo, as probabilidades de acertar são
+
+```{r}
+probs %>% 
+  gt() %>% 
+    cols_align('right') %>% 
+    fmt_number(
+      c(3, 4, 5), 
+      dec_mark = ',',
+      sep_mark = '.',
+      decimals = 10
+    ) %>% 
+    fmt_number(
+      2, 
+      dec_mark = ',',
+      sep_mark = '.'
+    ) 
+```
+
+Para fins de comparação, as probabilidades de você lançar uma moeda não-viciada $n$ vezes e obter cara em *todos* os lançamentos são de
+
+```{r}
+n <- 1:25
+probabilidade <- 1/2^n
+tibble(n, probabilidade) %>% 
+  gt() %>% 
+    cols_align('right')
+```
+
 
 # Estimativas
 
 ## Corrigindo a estimativa de arrecadação da CEF
 
 ```{r}
-loadd(arrec_resultados, n_recentes, rsq_CEF)
-
 previsoes <- arrec_resultados$validacao
 modelo <- arrec_resultados$modelo %>% pull_workflow_fit()
 
@@ -279,7 +506,7 @@ previsoes %>%
     )
 ```
 
-O gráfico mostra que as estimativas da CEF costumam ser mais baixas do que as arrecadações reais. Nosso modelo corrige esta tendência. 
+O gráfico mostra que as estimativas da CEF (a linha cinza) costumam ser mais baixas do que as arrecadações reais. Nosso modelo corrige esta tendência. 
 
 ::: {.rmdimportant}
 
@@ -320,71 +547,9 @@ previsoes %>%
     theme(legend.position = 'bottom')
 ```
 
-
-## Estimando ganhadores da quina
-
-```{r}
-loadd(quina_resultados, n_recentes)
-
-previsoes <- quina_resultados$validacao
-modelo <- quina_resultados$modelo %>% pull_workflow_fit()
-
-b0 <- modelo$fit$coefficients[1] %>% round(2) %>% fm()
-b1 <- modelo$fit$coefficients[2] %>% round(2) %>% fm()
-
-n_previsoes <- nrow(previsoes)
-rsq <- previsoes %>% 
-  metrics(truth = g_quina, estimate = .pred) %>% 
-  filter(.metric == 'rsq') %>% 
-  pull(.estimate)
-```
-
-É razoável que, quanto maior a arrecadação, maior a quantidade de jogadores e maior a quantidade de ganhadores da quina.
-
-O gráfico abaixo mostra um modelo linear para o número de ganhadores da quina com base na estimativa de arrecadação da CEF. O modelo dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação no número de ganhadores.
-
-```{r}
-previsoes %>% 
-  ggplot(aes(x = est_arrec)) +
-    geom_ribbon(
-      aes(ymin = .pred_lower, ymax = .pred_upper), 
-      fill = 'light blue',
-      alpha = .3
-    ) +
-    geom_line(aes(y = .pred), color = 'blue', size = 1) +
-    geom_point(aes(y = g_quina)) +
-    labs(
-      title = glue(
-        'Nosso modelo para ganhadores da quina',
-        '\nnos últimos {n_previsoes} concursos'
-      ),
-      subtitle = 'com base nas estimativas da CEF',
-      x = 'Estimativa da CEF',
-      y = 'Ganhadores'
-    ) +
-    scale_x_continuous(
-      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
-    )
-```
-
-::: {.rmdimportant}
-
-### Conclusão {-}
-
-O número de ganhadores da quina e a estimativa da CEF estão relacionadas, *em média*, pela equação
-$$
-\text{ganhadores da quina} = `r b0` + `r b1` \times \text{estimativa}
-$$
-com estimativa em milhões de reais.
-
-:::
-
-
 ## Estimando ganhadores da quadra
 
 ```{r}
-loadd(quadra_resultados, n_recentes)
-
 previsoes <- quadra_resultados$validacao
 modelo <- quadra_resultados$modelo %>% pull_workflow_fit()
 
@@ -398,7 +563,7 @@ rsq <- previsoes %>%
   pull(.estimate)
 ```
 
-O mesmo raciocínio se aplica ao número de ganhadores da quadra.
+É razoável que, quanto maior a arrecadação, maior a quantidade de jogadores e maior a quantidade de ganhadores da quadra.
 
 O gráfico abaixo mostra um modelo linear para o número de ganhadores da quadra com base na estimativa de arrecadação da CEF. O modelo dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação no número de ganhadores.
 
@@ -439,46 +604,182 @@ com estimativa em milhões de reais.
 :::
 
 
-# Estimando rateios 
+## Estimando ganhadores da quina
 
 ```{r}
-loadd(df_regress, df_vetor)
+previsoes <- quina_resultados$validacao
+modelo <- quina_resultados$modelo %>% pull_workflow_fit()
+
+b0 <- modelo$fit$coefficients[1] %>% round(2) %>% fm()
+b1 <- modelo$fit$coefficients[2] %>% round(2) %>% fm()
+
+n_previsoes <- nrow(previsoes)
+rsq <- previsoes %>% 
+  metrics(truth = g_quina, estimate = .pred) %>% 
+  filter(.metric == 'rsq') %>% 
+  pull(.estimate)
 ```
 
-## Sena
+O mesmo raciocínio se aplica ao número de ganhadores da quina.
+
+O gráfico abaixo mostra um modelo linear para o número de ganhadores da quina com base na estimativa de arrecadação da CEF. O modelo dá conta de $`r (rsq %>% round(3) * 100) %>% fm()`\%$ da variação no número de ganhadores.
 
 ```{r}
-df_vetor %>% 
-  count(g_sena)
-```
-
-```{r}
-df_regress %>% 
-  ggplot(aes(x = est_arrec, y = r_sena)) +
-    geom_point(alpha = .5) +
-    scale_x_continuous(labels = scales::dollar_format(suffix = 'M')) +
-    scale_y_continuous(
-      labels = scales::dollar_format(
-        big.mark = '.', 
-        decimal.mark = ',',
-        scale = 1e-6,
-        suffix = 'M'
-      )
+previsoes %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = .pred_lower, ymax = .pred_upper), 
+      fill = 'light blue',
+      alpha = .3
     ) +
-    geom_smooth(method = 'lm', se = FALSE, formula = y ~ x) +
+    geom_line(aes(y = .pred), color = 'blue', size = 1) +
+    geom_point(aes(y = g_quina)) +
     labs(
       title = glue(
-        'Valor do prêmio individual da sena',
-        '\nnos últimos {n_recentes} concursos'
+        'Nosso modelo para ganhadores da quina',
+        '\nnos últimos {n_previsoes} concursos'
       ),
-
-      subtitle = 'em função da arrecadação estimada',
-      y = 'prêmio\nindividual',
-      x = 'arrecadação estimada'
+      subtitle = 'com base nas estimativas da CEF',
+      x = 'Estimativa da CEF',
+      y = 'Ganhadores'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
     )
 ```
 
-## Quina e quadra
+::: {.rmdimportant}
+
+### Conclusão {-}
+
+O número de ganhadores da quina e a estimativa da CEF estão relacionadas, *em média*, pela equação
+$$
+\text{ganhadores da quina} = `r b0` + `r b1` \times \text{estimativa}
+$$
+com estimativa em milhões de reais.
+
+:::
+
+
+## Estimando ganhadores da sena
+
+```{r}
+n_concursos <- nrow(df_vetor)
+sem_sena <- df_vetor %>% filter(g_sena == 0) %>% nrow()
+com_sena <- n_concursos - sem_sena
+perc_sena <- (100 * (com_sena / n_concursos)) %>% round(0) 
+```
+
+Os ganhadores da sena são poucos: dos $`r n_concursos %>% fm()`$ concursos realizados até agora, apenas $`r com_sena %>% fm()`$ ($`r perc_sena %>% fm()`\%$) tiveram ganhadores da sena.
+
+```{r}
+previsoes <- sena_resultados$validacao
+modelo <- sena_resultados$modelo %>% pull_workflow_fit()
+
+n_previsoes <- nrow(previsoes)
+rsq <- previsoes %>% 
+  metrics(truth = g_sena, estimate = .pred) %>% 
+  filter(.metric == 'rsq') %>% 
+  pull(.estimate)
+```
+
+Ganhadores da sena são tão raros que um modelo linear para estimar sua quantidade com base na arrecadação prevê, em média, *menos que $1$ ganhador em todos os casos*:
+
+```{r}
+previsoes %>% 
+  ggplot(aes(x = est_arrec)) +
+    geom_ribbon(
+      aes(ymin = max(.pred_lower, 0), ymax = .pred_upper),
+      fill = 'light blue',
+      alpha = .3
+    ) +
+    geom_line(aes(y = .pred), color = 'blue', size = 1) +
+    geom_point(aes(y = g_sena)) +
+    labs(
+      title = glue(
+        'Nosso modelo para ganhadores da sena',
+        '\nnos últimos {n_previsoes} concursos'
+      ),
+      subtitle = 'com base nas estimativas da CEF',
+      x = 'Estimativa da CEF',
+      y = 'Ganhadores'
+    ) +
+    scale_x_continuous(
+      labels = scales::label_dollar(suffix = 'M', big.mark = ' ')
+    ) +
+    scale_y_continuous(breaks = 0:max(previsoes$g_sena))
+```
+
+Por isso, não vamos trabalhar com estimativas sobre a sena.
+
+Mas isto não nos impede de observar alguns fatos interessantes:
+
+```{r}
+n_ganhadores <- df_vetor %>% 
+  count(g_sena) %>% 
+  rename(
+    Ganhadores = g_sena,
+    Concursos = n
+  ) %>% 
+  gt() %>% 
+    cols_align('right')
+
+muitos_ganhadores <- df_vetor %>% 
+  filter(g_sena > 7) %>% 
+  select(data, g_sena, r_sena) %>% 
+  mutate(
+    data = format(data, "%d/%m/%Y"),
+    r_sena = r_sena %>% round(0) %>% fm()
+  ) %>% 
+  rename(
+    Data = data,
+    Ganhadores = g_sena,
+    'Prêmio (R$)' = r_sena
+  ) %>% 
+  gt() %>% 
+    cols_align('right')
+  
+virada <- df_vetor %>% 
+  filter(month(data) == 12 & day(data) == 31) %>% 
+  select(data, g_sena, r_sena) %>% 
+  mutate(
+    data = format(data, "%d/%m/%Y"),
+    r_sena = r_sena %>% round(0) %>% fm()
+  ) %>% 
+  rename(
+    Data = data,
+    Ganhadores = g_sena,
+    'Prêmio (R$)' = r_sena
+  ) %>% 
+  gt() %>% 
+    cols_align('right')
+  
+
+```
+
+
+* Quantidades de ganhadores:
+
+    ```{r}
+    n_ganhadores
+    ```
+    
+* Eis os concursos com mais ganhadores, com os valores dos prêmios individuais:
+
+    ```{r}
+    muitos_ganhadores
+    ```
+
+* As mega-senas da virada costumam ter número alto de ganhadores da sena, pelo menos de $2010$ para cá. Aliás, para fãs de teorias da conspiração: o que houve depois de $2018$?
+
+    ```{r}
+    virada
+    ```
+
+
+
+
+## Estimando rateios 
 
 Para prever os valores dos prêmios individuais da quadra e da quina, o ideal seria achar um modelo dos rateios em função da arrecadação estimada.
 
@@ -489,6 +790,8 @@ Mas, quando vemos os gráficos, percebemos que isto não é verdade.
 Para a quina:
 
 ```{r}
+n_previsoes <- nrow(df_regress)
+
 df_regress %>% 
   ggplot(aes(x = est_arrec, y = r_quina)) +
     geom_point(alpha = .5) +
@@ -498,7 +801,10 @@ df_regress %>%
     ) +
     geom_smooth(method = 'lm', se = FALSE, formula = y ~ x) +
     labs(
-      title = 'Valor do prêmio individual da quina',
+      title = glue(
+        'Valor do prêmio individual da quina',
+        '\nnos últimos {n_previsoes} concursos'
+      ),
       subtitle = 'em função da arrecadação estimada',
       y = 'prêmio\nindividual',
       x = 'arrecadação estimada'
@@ -519,12 +825,32 @@ df_regress %>%
     ) +
     geom_smooth(method = 'lm', se = FALSE, formula = y ~ x) +
     labs(
-      title = 'Valor do prêmio individual da quadra',
+      title = glue(
+        'Valor do prêmio individual da quadra',
+        '\nnos últimos {n_previsoes} concursos'
+      ),
       subtitle = 'em função da arrecadação estimada',
       y = 'prêmio\nindividual',
       x = 'arrecadação estimada'
     )
 ```
 
-# Previsões
+# Valores esperados
+
+## Prêmios
+
+```{r}
+premios %>% 
+  mutate(jogados = paste(jogados, 'jogados:')) %>% 
+  gt(groupname_col = 'jogados') %>% 
+    tab_stubhead(label = 'jogados') %>% 
+    opt_row_striping()
+```
+
+```{r}
+premios %>% kable()
+```
+
+
+???
 

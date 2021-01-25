@@ -153,6 +153,62 @@ $(
 )
 ```
 
+
+# Learning pivot_longer
+
+
+```{r}
+relig_income
+```
+
+```{r}
+relig_income %>%
+  pivot_longer(!religion, names_to = "income", values_to = "count")
+```
+
+```{r}
+billboard
+```
+
+```{r}
+billboard %>%
+ pivot_longer(
+   cols = starts_with("wk"),
+   names_to = "week",
+   names_prefix = "wk",
+   values_to = "rank",
+   values_drop_na = TRUE
+ )
+```
+
+```{r}
+who
+```
+
+
+```{r}
+# Multiple variables stored in column names
+who %>% pivot_longer(
+  cols = new_sp_m014:newrel_f65,
+  names_to = c("diagnosis", "gender", "age"),
+  names_pattern = "new_?(.*)_(.)(.*)",
+  values_to = "count"
+)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Probabilidades de acertos
 
 A fórmula geral para 

@@ -19,6 +19,8 @@ the_plan <- drake_plan(
   # Bom para computar número de acertos em simulações
   df_vetor = criar_col_resultado(df),
   
+  premios = ler_premios(),
+
 
 # Jogar dezenas raras/frequentes ------------------------------------------
 
@@ -59,6 +61,10 @@ the_plan <- drake_plan(
   arrec_resultados = regredir_arrec(df_regress, df_treino, df_teste),
   # Calcular r^2 para as estimativas da CEF
   rsq_CEF = computar_rsq_CEF(df_regress),
+
+
+  ## Regressão para estimar ganhadores da sena ----------------------------
+  sena_resultados = regredir_sena(df_regress, df_treino, df_teste),
 
 
   ## Regressão para estimar ganhadores da quina ---------------------------
