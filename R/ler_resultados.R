@@ -11,9 +11,6 @@
 ler_resultados <- function(nome) {
 
   lido <- read_html(nome, encoding = 'UTF-8')
-  lido <- read_html(nome, encoding = 'UTF-8')
-  lido <- read_html(nome, encoding = 'UTF-8')
-  lido <- read_html(nome, encoding = 'UTF-8')
   
   lista <- lido %>% 
     rvest::html_table(
