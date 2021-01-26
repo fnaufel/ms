@@ -3,10 +3,34 @@
 
 * Refs
 
-*** https://www.statschat.org.nz/2012/09/05/lotto-and-abstract-theory/
-    
-*** http://www.stuff.co.nz/business/9621919/Crunching-the-numbers-on-Lotto-strategies
+*** URLs
 
-    + Procurar artigo mencionado aqui: 2010 study by San Diego State
-      University's Helio Chang, Albert Chen and Fred Chen from Science
-      Applications International
+***** https://www.statschat.org.nz/2012/09/05/lotto-and-abstract-theory/
+    
+***** MIT students exploited loophole in the Massachusetts State Lottery
+
+******* https://www.youtube.com/watch?v=IGKMaYGtYT0
+
+******* https://www.maa.org/sites/default/files/audio_clips/Ellenberg_lecture062014.mp3
+
+******* https://www.maa.org/sites/default/files/audio_clips/Ellenberg_interview062014.mp3
+
+***** http://www.stuff.co.nz/business/9621919/Crunching-the-numbers-on-Lotto-strategies
+
+*** Articles
+
+***** [[/home/BooksAndArticles/Gambling/Abrams2011-finding-good-bets.pdf]]
+
+      + https://www.maa.org/programs/maa-awards/writing-awards/finding-good-bets-in-the-lottery-and-why-you-shouldnt-take-them
+      
+***** [[/home/BooksAndArticles/Gambling/consecutive-numbers.pdf]]
+
+***** [[/home/BooksAndArticles/Gambling/chang-chen-statistical-analysis.pdf]]
+
+      + Mencionado em http://www.stuff.co.nz/business/9621919/Crunching-the-numbers-on-Lotto-strategies
+
+*** Books
+
+***** [[/home/BooksAndArticles/Calibre/Mark Bollman/Basic Gambling Mathematics_ The Numbers Behind the Neon (1221)/Basic Gambling Mathematics_ The Numbers Be - Mark Bollman.pdf]]
+    
+***** [[/home/BooksAndArticles/Calibre/Mark Bollman/Mathematics of Keno and Lotteries (1217)/Mathematics of Keno and Lotteries - Mark Bollman.pdf]]
