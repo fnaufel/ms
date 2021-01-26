@@ -10,7 +10,7 @@ library(glue)
 library(gglm)
 library(rvest)
 library(janitor)
-library(gt)
+library(kableExtra)
 
 library(summarytools)
 st_options(

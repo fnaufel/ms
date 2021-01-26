@@ -43,11 +43,6 @@ options(dplyr.print_min = 6, dplyr.print_max = 6)
 # Supress crayon output
 options(crayon.enabled = FALSE)
 
-#library()
-
-# For nice tables
-library(gt)
-
 # For nice dataframe summaries
 library(summarytools)
 st_options(
@@ -289,15 +284,15 @@ Em uma simulação, jogamos, em cada concurso, as $`r n_raras`$ dezenas que tinh
 ```{r echo=FALSE}
 df_sucessos_raras %>% 
   count(n_acertos) %>% 
-  mutate(
-    n = n %>% fm()
-  ) %>% 
   rename(
     Acertos = n_acertos,
     Concursos = n
   ) %>% 
-  gt() %>% 
-    cols_align('right')
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 ```
 
 Outras pessoas dizem que as dezenas mais frequentes são as mais "quentes", e têm maior probabilidade de sair. Em outra simulação, jogamos, em cada concurso, as $`r n_raras`$ dezenas que tinham a *maior* frequência acumulada em todos os concursos anteriores. As quantidades de acertos em $`r n_concursos %>% fm()`$ concursos foram:
@@ -305,15 +300,15 @@ Outras pessoas dizem que as dezenas mais frequentes são as mais "quentes", e t�
 ```{r echo=FALSE}
 df_sucessos_freqs %>% 
   count(n_acertos) %>% 
-  mutate(
-    n = n %>% fm()
-  ) %>% 
   rename(
     Acertos = n_acertos,
     Concursos = n
   ) %>% 
-  gt() %>% 
-    cols_align('right')
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 ```
 
 
@@ -335,15 +330,15 @@ df_sucessos_mesmas <- computar_acertos(df_vetor, mesmas_dezenas)
 
 df_sucessos_mesmas %>% 
   count(n_acertos) %>% 
-  mutate(
-    n = n %>% fm()
-  ) %>% 
   rename(
     Acertos = n_acertos,
     Concursos = n
   ) %>% 
-  gt() %>% 
-    cols_align('right')
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 ```
 
 Quaisquer diferenças entre as $3$ situações são pequenas, devidas somente ao acaso.
@@ -409,48 +404,35 @@ As chances de acertar são de $1$ em...
 
 ```{r}
 chances %>% 
-  gt() %>% 
-    cols_align('right') %>% 
-    fmt_number(
-      c(1, 3, 4, 5), 
-      dec_mark = ',',
-      sep_mark = '.',
-      decimals = 0
-    ) %>% 
-    fmt_number(
-      2, 
-      dec_mark = ',',
-      sep_mark = '.'
-    ) 
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 ```
 
 Dito de outro modo, as probabilidades de acertar são
 
 ```{r}
 probs %>% 
-  gt() %>% 
-    cols_align('right') %>% 
-    fmt_number(
-      c(3, 4, 5), 
-      dec_mark = ',',
-      sep_mark = '.',
-      decimals = 10
-    ) %>% 
-    fmt_number(
-      2, 
-      dec_mark = ',',
-      sep_mark = '.'
-    ) 
+  kbl(digits = 9, format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 ```
 
 Para fins de comparação, as probabilidades de você lançar uma moeda não-viciada $n$ vezes e obter cara em *todos* os lançamentos são de
 
 ```{r}
-n <- 1:25
+n <- 1:26
 probabilidade <- 1/2^n
 tibble(n, probabilidade) %>% 
-  gt() %>% 
-    cols_align('right')
+  kbl(digits = 9, format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 ```
 
 
@@ -715,45 +697,54 @@ Por isso, não vamos trabalhar com estimativas sobre a sena.
 Mas isto não nos impede de observar alguns fatos interessantes:
 
 ```{r}
-n_ganhadores <- df_vetor %>% 
-  count(g_sena) %>% 
-  rename(
-    Ganhadores = g_sena,
-    Concursos = n
-  ) %>% 
-  gt() %>% 
-    cols_align('right')
+n_ganhadores <- 
+    df_vetor %>% 
+    count(g_sena) %>% 
+    rename(
+      ganhadores = g_sena,
+      concursos = n
+    ) %>%
+    kbl(format.args = list(big.mark = '.')) %>% 
+    kable_paper(
+      c('striped', 'hover'),
+      full_width = FALSE
+    )
 
 muitos_ganhadores <- df_vetor %>% 
   filter(g_sena > 7) %>% 
   select(data, g_sena, r_sena) %>% 
   mutate(
     data = format(data, "%d/%m/%Y"),
-    r_sena = r_sena %>% round(0) %>% fm()
+    r_sena = r_sena %>% round(0)
   ) %>% 
   rename(
-    Data = data,
-    Ganhadores = g_sena,
-    'Prêmio (R$)' = r_sena
+    data = data,
+    ganhadores = g_sena,
+    'prêmio (R$)' = r_sena
   ) %>% 
-  gt() %>% 
-    cols_align('right')
-  
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
+
 virada <- df_vetor %>% 
   filter(month(data) == 12 & day(data) == 31) %>% 
   select(data, g_sena, r_sena) %>% 
   mutate(
     data = format(data, "%d/%m/%Y"),
-    r_sena = r_sena %>% round(0) %>% fm()
+    r_sena = r_sena %>% round(0)
   ) %>% 
   rename(
-    Data = data,
-    Ganhadores = g_sena,
-    'Prêmio (R$)' = r_sena
+    data = data,
+    ganhadores = g_sena,
+    'prêmio (R$)' = r_sena
   ) %>% 
-  gt() %>% 
-    cols_align('right')
-  
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
 
 ```
 
@@ -775,8 +766,6 @@ virada <- df_vetor %>%
     ```{r}
     virada
     ```
-
-
 
 
 ## Estimando rateios 
@@ -841,16 +830,15 @@ df_regress %>%
 
 ```{r}
 premios %>% 
-  mutate(jogados = paste(jogados, 'jogados:')) %>% 
-  gt(groupname_col = 'jogados') %>% 
-    tab_stubhead(label = 'jogados') %>% 
-    opt_row_striping()
+  kbl(
+    format.args = list(big.mark = '.')
+  ) %>% 
+  kable_styling(
+    c('bordered', 'striped', 'hover'),
+    full_width = FALSE,
+    html_font = "\"Arial Narrow\", arial, helvetica, sans-serif"
+  ) %>% 
+  collapse_rows(columns = 1)
 ```
-
-```{r}
-premios %>% kable()
-```
-
 
 ???
-
