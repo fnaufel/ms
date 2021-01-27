@@ -393,9 +393,9 @@ quadra <- dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6) %>% round(10)
 
 probs <- tibble(jogados, valor, sena, quina, quadra)
 
-sena <- (1/dhyper(x = 6, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
-quina <- (1/dhyper(x = 5, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
-quadra <- (1/dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6)) %>% round(0)
+sena <- (1/dhyper(x = 6, m = jogados, n = 60 - jogados, k = 6)) %>% ceiling()
+quina <- (1/dhyper(x = 5, m = jogados, n = 60 - jogados, k = 6)) %>% ceiling()
+quadra <- (1/dhyper(x = 4, m = jogados, n = 60 - jogados, k = 6)) %>% ceiling()
 
 chances <- tibble(jogados, valor, sena, quina, quadra)
 ```
@@ -422,19 +422,11 @@ probs %>%
   )
 ```
 
-Para fins de comparação, as probabilidades de você lançar uma moeda não-viciada $n$ vezes e obter cara em *todos* os lançamentos são de
+Para fins de comparação:
 
-```{r}
-n <- 1:26
-probabilidade <- 1/2^n
-tibble(n, probabilidade) %>% 
-  kbl(digits = 9, format.args = list(big.mark = '.')) %>% 
-  kable_paper(
-    c('striped', 'hover'),
-    full_width = FALSE
-  )
-```
+* A probabilidade de você lançar uma moeda não-viciada $26$ vezes e obter cara em *todos* os lançamentos é de $`r (1/2^26) %>% round(9) %>% fm()`$.
 
+* A probabilidade de você lançar $10$ dados não-viciados e conseguir $6$ em *todos* eles é de $`r (1/6^10) %>% round(9) %>% fm()`$.
 
 # Estimativas
 
@@ -824,7 +816,7 @@ df_regress %>%
     )
 ```
 
-# Valores esperados
+# Custos e valores esperados
 
 ## Prêmios
 
@@ -841,4 +833,62 @@ premios %>%
   collapse_rows(columns = 1)
 ```
 
-???
+
+## Ganhar a sena com certeza
+
+Para ter certeza de acertar a sena, basta apostar todas as senas possíveis.
+
+Dependendo da quantidade de números jogados em cada volante, a quantidade de volantes que seria preciso preencher varia de acordo com a tabela abaixo, desde que os números escolhidos em cada volante sejam tais que todas as senas estejam cobertas:
+
+```{r}
+chances %>% 
+  mutate(
+    volantes = sena,
+    'custo (R$)' = valor * sena
+  ) %>% 
+  select(jogados, volantes, 'custo (R$)') %>% 
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
+```
+
+Por incrível que pareça, esta estratégia teria valido a pena em um concurso específico! O valor do prêmio depende da quantidade de volantes e da quantidade de dezenas jogadas em cada volante pelo ganhador. 
+
+Na tabela abaixo, os valores são para um único volante, com $6$ a $15$ números jogados:
+
+```{r}
+df_vetor %>% 
+  filter(r_sena > 28e7) %>% 
+  select(num, data, r_sena, r_quina, r_quadra) %>% 
+  expand_grid(jogados = 6:15) %>% 
+  mutate(acertos = 6) %>% 
+  left_join(premios, by = c("jogados", "acertos")) %>% 
+  mutate(
+    'prêmio (R$)' = r_sena * senas + r_quina * quinas + r_quadra * quadras
+  ) %>% 
+  select(num, data, jogados, 'prêmio (R$)') %>% 
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  ) %>% 
+  collapse_rows(1:2)
+```
+
+## Ganhar a quina com certeza
+
+```{r}
+chances %>% 
+  mutate(
+    volantes = quina,
+    'custo (R$)' = valor * quina
+  ) %>% 
+  select(jogados, volantes, 'custo (R$)') %>% 
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
+```

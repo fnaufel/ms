@@ -1,0 +1,249 @@
+---
+title: 'Probs'
+subtitle: 'scratch'
+author: 'fnaufel'
+email: 'https://fnaufel.github.io/'
+date: 'Versão de `r format(Sys.Date(), "%d/%m/%Y")`'
+lang: 'pt'
+# TODO: include LaTeX fields
+output: 
+  html_document:
+    theme: readable
+           # https://bootswatch.com/3/readable/
+    highlight: tango
+    css: styles.css
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    fig_caption: true
+    df_print: paged
+    self_contained: true
+    # code_folding: show
+    # keep_md: true
+    # includes:
+    #   in_header: header.html
+    #   before_body: doc_prefix.html
+    #   after_body: doc_suffix.html
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+
+opts_chunk$set(
+  echo = FALSE, 
+  # collapse = TRUE,
+  # cache = TRUE,
+  out.width = "75%",
+  fig.align = 'center',
+  fig.width = 6,
+  fig.show = "hold"
+)
+
+options(dplyr.print_min = 6, dplyr.print_max = 6)
+
+# Supress crayon output
+options(crayon.enabled = FALSE)
+
+# For nice dataframe summaries
+library(summarytools)
+st_options(
+  plain.ascii = FALSE,
+  dfSummary.varnumbers = FALSE,
+  dfSummary.style = 'grid',
+  dfSummary.graph.magnif = .75
+)
+
+# Tidy!
+library(tidyverse)
+
+# Sober theme for ggplot
+theme_set(
+  theme_linedraw() +                         # Set simple theme for ggplot
+    theme(                                   # with some tweaks
+      axis.title.y.left = element_text(
+         angle = 0,                          # Never rotate y axis title
+         margin = margin(r = 20),            # Separate y axis title a little 
+         vjust = .5                          # Leave y axis title in the middle
+      ),
+      axis.title.x.bottom = element_text(
+         margin = margin(t = 20)             # Separate x axis title a little 
+      ),
+      axis.line = element_blank(),           # No axis lines
+      panel.border = element_blank(),        # No frame
+      panel.grid.minor = element_blank()     # No grid minor lines
+    )
+)
+
+# Avoid scientific notation and use a comma as decimal separator
+options(
+  scipen = 15,
+  OutDec = ','
+)
+
+# Format a number with thousand separators (default point)
+# and decimal comma enclosed in curly braces for LaTeX printing.
+# CAREFUL: if called outside math mode, will print the braces!
+fm <- function(x, big = '.', decimal = '{,}') {
+  if (!is.numeric(x)) {
+    x
+  } else {
+    prettyNum(x, big.mark = big, decimal.mark = decimal)
+  }
+
+}
+
+# To center the results of a chunk (image, video etc.)
+# Usage: 
+#         out.extra=center()
+#         
+center <- function(){
+  
+  if (is_html_output()) {
+    'class="center"'
+  }
+  
+}
+
+
+# To embed YT videos in HTML and the link (centered) in LaTeX
+embed_yt <- function(code) {
+
+  if (is_html_output()) {
+    include_url(
+      paste0(
+        'https://www.youtube.com/embed/',
+        code
+      )
+    )
+  } else {
+    cat(
+      paste0(
+        '```{=latex}\n',
+        '\\begin{center} \\url{https://youtu.be/',
+        code,
+        '} \\end{center}\n',
+        '```'
+      )
+    )
+  }
+  
+}
+
+source('../packages.R')
+
+loadd(
+  df,
+  df_sucessos_raras, 
+  n_raras,
+  df_sucessos_freqs,
+  df_vetor,
+  df_summary,
+  df_regress,
+  arrec_resultados, 
+  n_recentes, 
+  rsq_CEF,
+  quadra_resultados,
+  quina_resultados,
+  sena_resultados,
+  premios
+)
+
+opts_knit$set(root.dir = '/home/fnaufel/Documents/DataAnalysis/Megasena')
+
+```
+
+```{js javascript-init, echo=FALSE}
+
+// Make off-site links open in a new window/tab
+function changeTargets() {
+  $("a").attr(
+    "target", function() {
+      // Load local links locally
+      if (this.host == location.host) return "_self"
+      // Load off-site links in a new window
+      else return "_blank";
+    }
+  );
+}
+
+// Execute when document is ready
+$(
+  changeTargets
+)
+```
+
+
+
+# Probabilidades
+
+A fórmula geral para 
+
+* $a$ acertos
+* $j$ números jogados
+* $s$ números sorteados dentre
+* $t$ números no total
+
+é
+
+$$
+\Pr(a \mid j, s, t) = \frac{{j \choose a}{t - j \choose s - a}}{t \choose s}
+$$
+
+O total de resultados possíveis é $t \choose s$.
+
+A idéia é que, fixados os $j$ números jogados, para determinar a quantidade de resultados que têm exatamente $a$ acertos, é preciso
+
+* determinar os acertos dentre os jogados: $j \choose a$
+
+* determinar os números sorteados restantes (que não podem ter sido jogados): $t - j \choose s - a$
+
+Na verdade, o número de acertos segue a [distribuição hipergeométrica](https://pt.wikipedia.org/wiki/Distribui%C3%A7%C3%A3o_hipergeom%C3%A9trica).
+
+```{r}
+total <- 6
+sorteados <- 3
+jogados <- sorteados:(total-1)
+
+acertos_3 <- dhyper(x = 3, m = jogados, n = total - jogados, k = sorteados)
+acertos_2 <- dhyper(x = 2, m = jogados, n = total - jogados, k = sorteados)
+
+chances_3 <- (1/acertos_3) %>% ceiling()
+chances_2 <- (1/acertos_2) %>% ceiling()
+
+probs <- tibble(jogados, acertos_3, acertos_2)
+chances <- tibble(jogados, chances_3, chances_2)
+
+probs
+chances
+```
+
+
+```{r}
+total <- 10
+sorteados <- 3
+jogados <- sorteados:(min(sorteados + 9, total - 1))
+acertos <- sorteados:(max(sorteados - 2, 1))
+names(acertos) <- acertos
+
+probs <- acertos %>%
+  map_dfc(dhyper, m = jogados, n = total - jogados, k = sorteados) %>% 
+  mutate(jogados = jogados, .before = 1)
+
+probs %>% 
+  kbl(format.args = list(big.mark = '.'), digits = 9) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
+
+chances <- probs %>% 
+  mutate(across(!1, ~ round(1/.x, 0)))
+
+chances %>% 
+  kbl(format.args = list(big.mark = '.')) %>% 
+  kable_paper(
+    c('striped', 'hover'),
+    full_width = FALSE
+  )
+
+```
